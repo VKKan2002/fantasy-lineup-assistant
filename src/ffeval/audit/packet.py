@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
+
+NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
 HIGHER_IS_BETTER = "higher_is_better"
 LOWER_IS_BETTER = "lower_is_better"
@@ -93,8 +96,46 @@ class FactsPacket:
         )
 
     def numbers(self) -> dict[str, float]:
+        """The numeric facts, keyed by the id that carries each one.
+
+        What a claim can be CHECKED against. The header's season and week are left out
+        on purpose: matching a sentence about a point spread to the week number is a
+        coincidence, not a confirmation, and it costs a real catch. See
+        sourced_numbers() for the other list and why there are two.
+        """
         return {
             fact.id: float(fact.value)
             for fact in self.facts
             if isinstance(fact.value, (int, float)) and not isinstance(fact.value, bool)
         }
+
+    def sourced_numbers(self) -> dict[str, float]:
+        """Every number this packet can be said to have written down. What a claim may
+        RECITE, as opposed to what it can be CHECKED against.
+
+        Two lists because the two layers ask different questions of the same digits:
+
+          numbers()         "does the packet confirm this?"  A spread claim that happens
+                            to contain the week number is not confirmed by anything.
+          sourced_numbers() "where did this digit come from?"  Anything we wrote down
+                            counts; anything only a news snippet said does not.
+
+        Three sources, all of them ours:
+          - fact values
+          - the header's season and week, so "in week 3" is not an invented figure
+          - numbers inside fact LABELS - "points scored in week 1", "out of 32". We wrote
+            those labels, so reciting one is reciting structured data. Without them the
+            gate refused "Allen scored 38.76 points in week 1" over the 1.
+
+        News is absent from both, and that absence IS the rule: a number may rest on a
+        structured field and never on prose.
+        """
+        out = {
+            "header.season": float(self.season),
+            "header.week": float(self.week),
+            **self.numbers(),
+        }
+        for fact in self.facts:
+            for n in NUMBER.findall(fact.label):
+                out[f"{fact.id}.label:{n}"] = float(n)
+        return out

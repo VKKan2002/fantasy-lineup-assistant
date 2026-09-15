@@ -218,7 +218,9 @@ def main() -> None:
     valid = set()
     for f in files:
         pk, _, _ = load_cases(f)
-        valid |= {x.id for x in pk.facts} | {x.id for x in pk.news}
+        valid |= {x.id for x in pk.facts} | {x.id for x in pk.news} | set(pk.numbers())
+        # valid follows numbers() rather than restating it, so growing that list can
+        # never turn a real id into a phantom "fabricated citation" again.
     fabricated = {r["id"]: [x for x in r.get("evidence_ids", []) if x not in valid]
                   for r in rows}
     fabricated = {k: v for k, v in fabricated.items() if v}

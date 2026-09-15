@@ -253,6 +253,28 @@ against.
 The cost, stated plainly: SUPPORTED no longer means publishable. Shipping a sentence requires
 passing both layers, and that is a property of the pipeline rather than of any single verdict.
 
+**The two layers share how a number is read and not which numbers count.** They run through one
+matching helper, so they can never disagree about whether "25" matches 25.29. They consult
+different lists on purpose, and one flipped test is why. The packet's week is 3. The moment the
+baseline checker could see it, "Buffalo is a 3-point underdog" — false, the spread is +12.5 —
+found a 3 to match and passed, dropping the measured recall from 5 of 15 to 4. That checker never
+understood spreads; it caught the sentence because no fact happened to carry a 3, and adding a
+small integer to its vocabulary removed the luck. So `numbers()` is fact values only and answers
+"does the packet confirm this?", while `sourced_numbers()` answers "where did this digit come
+from?" and adds two things we wrote ourselves: the header's season and week, and the numbers
+inside fact labels. The labels are not decoration — without them the gate refused "Allen scored
+38.76 points in week 1" over the 1, which is a true sentence and a supported one.
+
+The alternative was to let the floor drop to 27% and note it. Rejected: the baseline is what the
+LLM auditor is measured against, and lowering it for a reason unrelated to either auditor's
+ability makes the model look better for nothing. A comparison that moves because the comparison
+point got worse is the first thing a reader should distrust.
+
+**The gate does not catch lies, and must not be asked to.** It passes "Buffalo is a 3-point
+underdog" — the 3 really did come from the packet header. Whether the sentence is *true* is the
+auditor's question, answered against a different list. Two layers, two questions, and neither one
+covering for the other is what keeps a bad score attributable.
+
 **Nothing personal goes into a prompt.** The free tier trains on submitted content and has no
 paid tier to upgrade into, so names and email addresses never enter a prompt. The model sees
 an anonymous roster; the email is assembled in our own code.
@@ -307,7 +329,8 @@ src/ffeval/              The library
   models/expected.py     Draft position -> expected points, fit leave-one-season-out
   audit/verdicts.py      The four verdicts, and which of them count as unfaithful
   audit/packet.py        The evidence a claim may rest on; reads JSON, no network
-  audit/auditor.py       Sentence splitter + the deterministic baseline checker
+  audit/auditor.py       Sentence splitter, the baseline checker, the LLM auditor,
+                         and unsourced_numbers() - layer 2's numeric-source gate
   audit/evaluate.py      Scores an auditor against the labelled claims
 
 checks/                  Runnable experiments and data gates
@@ -460,8 +483,8 @@ Actions secrets, never in the repo.
 | Evaluation harness ([evaluate.py](../src/ffeval/audit/evaluate.py)) | **done — 33% recall measured** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **19 tests** — deterministic layer + prompt/parse plumbing ([tests/test_auditor.py](../tests/test_auditor.py)) |
-| Numeric-source gate (layer 2) | not started, decided |
+| Test suite | **24 tests** — deterministic layer, the gate, prompt/parse plumbing ([tests/test_auditor.py](../tests/test_auditor.py)) |
+| Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | not started |
 | News search and the digging loop | not started |
 | ESPN roster fetch | not started |
@@ -532,5 +555,9 @@ imports from the *script's* location, walking up from `tools/`, so it never find
 `~/.mmv/node_modules`. Copy the script next to `node_modules` and run it there, or vendor a
 `package.json`.
 
-**No tests.** The correctness work so far lives in the gate scripts, which is not the same
-thing.
+**`render()` shows the header without ids.** `sourced_numbers()` can now cite `header.week`,
+but the packet text the model reads prints "Week: 3" with no id beside it, so the LLM auditor
+cannot cite what the deterministic layers can. Harmless today — the gate emits no evidence ids
+and the baseline cites fact ids only — but it is the same asymmetry that produced fabricated
+citations in section 9. Fix it at the next `PROMPT_VERSION` bump, not before: changing `render()`
+changes the prompt, and the published 93% was measured under version 1.

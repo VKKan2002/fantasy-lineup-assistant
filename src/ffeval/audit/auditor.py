@@ -10,7 +10,25 @@ Two auditors live here, and the cheap one comes first:
                       packet? Catches fabricated digits, misses everything about meaning.
                       This is the number the LLM auditor has to beat, and it is free.
 
-  audit()             the LLM auditor. Not built yet - outside the current scope.
+  audit_claims()      the LLM auditor: one call judges a whole list of sentences.
+                      Measured at 93% recall on unfaithful claims vs the baseline's 33%
+                      - see docs/FINDINGS.md section 9.
+
+Both judge sentences ONCE. The rewrite loop - flag, send back to the writer, re-judge,
+budget of two, then delete the sentence - is not built, and cannot be until a writer
+exists to rewrite anything.
+
+Then a second layer, which is not an auditor at all:
+
+  unsourced_numbers() the auditors ask "is this faithful?"; this asks "may it ship?"
+                      A figure sourced only to a news snippet is faithful AND refused.
+                      Shipping needs both layers, and keeping them apart is what makes
+                      a bad score attributable to one of them.
+
+Both layers read digits through _match_numbers, so they can never disagree about how a
+number is read. They deliberately consult different lists of numbers, because "does the
+packet confirm this?" and "does this rest on a structured field?" are not the same
+question - see FactsPacket.numbers() vs sourced_numbers().
 
 Numeric rule is Fork 1(a) from eval/LABELLING_RULES.md: a stated number matches a packet
 value if the packet value ROUNDS to it at the precision the sentence used. "25" matches
@@ -24,6 +42,7 @@ import json
 import re
 from pathlib import Path
 
+from .packet import NUMBER as _NUMBER
 from .packet import FactsPacket
 from .verdicts import AuditResult, ClaimVerdict, Verdict
 
@@ -43,8 +62,6 @@ _GUARD = "\x00"  # placeholder that cannot occur in real text
 # sentence, or by the end of the string. This is what protects decimals for free: in
 # "23.97" the dot is followed by a digit, not whitespace, so it never matches.
 _SENTENCE_END = re.compile(r"""[.!?]+(?=\s+["'(\[]?[A-Z]|\s*$)""")
-
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
 # Words that make a sentence checkable even with no digits in it.
 _COMPARATIVE = re.compile(
@@ -106,6 +123,24 @@ def _rounds_to(stated: str, packet_value: float) -> bool:
         return False
 
 
+def _match_numbers(claim: str, numbers: dict[str, float]) -> tuple[list[str], list[str]]:
+    """Every number in `claim`, split into (ids that back it, numbers nothing backs).
+
+    Both layers share this so they can never disagree about how a digit is read. They
+    pass DIFFERENT lists, because they disagree about which digits should count - see
+    FactsPacket.numbers() vs sourced_numbers().
+    """
+    matched: list[str] = []
+    unmatched: list[str] = []
+    for s in _NUMBER.findall(claim):
+        hits = [fid for fid, val in numbers.items() if _rounds_to(s, val)]
+        if hits:
+            matched.extend(hits)
+        else:
+            unmatched.append(s)
+    return list(dict.fromkeys(matched)), unmatched
+
+
 def baseline_verdict(packet: FactsPacket, claim: str) -> ClaimVerdict:
     """The free, no-model auditor. Beat this or the LLM adds nothing.
 
@@ -116,25 +151,14 @@ def baseline_verdict(packet: FactsPacket, claim: str) -> ClaimVerdict:
         containing "2" looks supported. Left in rather than patched, so the confusion
         matrix shows the cost instead of hiding it.
     """
-    stated = _NUMBER.findall(claim)
-    if not stated:
+    matched, unmatched = _match_numbers(claim, packet.numbers())
+    if not matched and not unmatched:
         return ClaimVerdict(
             claim=claim,
             verdict=Verdict.NOT_A_CLAIM,
             evidence_ids=(),
             reason="no numbers in the sentence; this checker only reads numbers",
         )
-
-    numbers = packet.numbers()
-    matched: list[str] = []
-    unmatched: list[str] = []
-    for s in stated:
-        hits = [fid for fid, val in numbers.items() if _rounds_to(s, val)]
-        if hits:
-            matched.extend(hits)
-        else:
-            unmatched.append(s)
-
     if unmatched:
         return ClaimVerdict(
             claim=claim,
@@ -145,9 +169,31 @@ def baseline_verdict(packet: FactsPacket, claim: str) -> ClaimVerdict:
     return ClaimVerdict(
         claim=claim,
         verdict=Verdict.SUPPORTED,
-        evidence_ids=tuple(dict.fromkeys(matched)),
-        reason=f"every number matches a packet fact: {', '.join(dict.fromkeys(matched))}",
+        evidence_ids=tuple(matched),
+        reason=f"every number matches a packet fact: {', '.join(matched)}",
     )
+
+
+# ------------------------------------------------------- layer 2: the numeric-source gate
+
+
+def unsourced_numbers(packet: FactsPacket, claim: str) -> list[str]:
+    """The numbers in `claim` that rest on nothing structured. Empty means it may ship.
+
+    A policy gate, not a verdict, and it disagrees with the auditor on purpose. "A beat
+    writer noted a 34 percent pressure rate" is SUPPORTED - news.03 says exactly that -
+    and still comes back as ["34"], because a figure sourced only to prose may not go out
+    as the tool's own number. Folding this into the auditor's prompt instead would leave a
+    bad score with two possible causes and nothing to tune against.
+
+    What the caller does with a refused sentence - cut it, or send it back for a rewrite -
+    is not decided here. There is no writer yet to rewrite anything.
+
+    ponytail: digits only, so "over the last two games" is invisible to it. That hole
+    closes when numeric prose is templated; a word-number parser now is work that gets
+    deleted then.
+    """
+    return _match_numbers(claim, packet.sourced_numbers())[1]
 
 
 # ------------------------------------------------------------------ the LLM auditor

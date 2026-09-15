@@ -10,6 +10,7 @@ from ffeval.audit.auditor import (
     build_prompt,
     parse_response,
     split_claims,
+    unsourced_numbers,
 )
 from ffeval.audit.evaluate import (
     always_supported_baseline,
@@ -122,6 +123,58 @@ def test_baseline_still_catches_5_of_15():
     # Raw counts, not the ratio: 5/15 and 10/30 are both 33%.
     assert (bad, caught) == (15, 5)
     assert s.recall_unfaithful == 5 / 15
+
+
+# ------------------------------------------------- layer 2: the numeric-source gate
+
+
+def test_gate_refuses_a_number_that_only_prose_backs():
+    """The two-layer split in one assertion.
+
+    news.03 states a 34 percent pressure rate, so the sentence is faithful and the
+    auditor rules it supported. No structured fact carries 34, so it may not ship.
+    Attribution does not rescue it - that is the whole point of the rule.
+    """
+    prose = "A beat writer noted he has been pressured on 34 percent of dropbacks."
+    assert unsourced_numbers(PACKET, prose) == ["34"]
+
+
+def test_gate_passes_a_number_a_fact_backs():
+    assert unsourced_numbers(PACKET, "Buffalo is favoured by 12.5 points.") == []
+
+
+def test_gate_passes_a_week_named_only_in_a_fact_label():
+    """A true sentence the gate used to refuse.
+
+    "week 1" is not the current week and no fact VALUE is 1, so the 1 looked invented.
+    It is right there in the label of form.game_w01, which we wrote, so it counts.
+    """
+    assert unsourced_numbers(PACKET, "Allen scored 38.76 PPR points in week 1.") == []
+
+
+def test_the_two_lists_disagree_about_the_week():
+    """Why there are two lists at all, pinned to the sentence that proved it.
+
+    "Buffalo is a 3-point underdog" is false - the spread is +12.5. The checker only
+    catches it because no FACT carries a 3. Week 3 is a 3, so letting the checker read
+    the header would hand it a false confirmation and lose a real catch.
+
+    The gate lets the same sentence through, and that is correct: the gate asks where a
+    number came from, not whether the sentence is true. Catching the lie is the
+    auditor's job.
+    """
+    spread_lie = "Buffalo is a 3-point underdog in this game."
+    assert baseline_verdict(PACKET, spread_lie).verdict is Verdict.CONTRADICTED
+    assert unsourced_numbers(PACKET, spread_lie) == []
+
+
+def test_gate_passes_the_week_from_the_packet_header():
+    """Season and week are structured fields that happen to live outside `facts`.
+
+    Without them in numbers(), the most ordinary sentence a writer can produce gets
+    refused for containing its own week number.
+    """
+    assert unsourced_numbers(PACKET, "He is a strong play in week 3.") == []
 
 
 # ------------------------------------------- the LLM auditor's plumbing (no key needed)
