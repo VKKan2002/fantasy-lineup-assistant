@@ -282,18 +282,23 @@ def call_model(prompt: str, model: str, cache_dir: Path | str = CACHE_DIR) -> st
     return text
 
 
+def strip_fence(raw: str) -> str:
+    """Model text -> the JSON inside it, tolerating a ```json fence around it."""
+    body = raw.strip()
+    if body.startswith("```"):
+        body = body.split("```")[1]
+        body = body[4:] if body.lower().startswith("json") else body
+    return body.strip()
+
+
 def parse_response(raw: str, claims: list[str]) -> tuple[ClaimVerdict, ...]:
     """Model text -> verdicts. Raises rather than guessing.
 
     A missing or unparseable ruling is a real failure. Backfilling the majority class
     here is how a broken auditor comes out looking accurate.
     """
-    body = raw.strip()
-    if body.startswith("```"):                       # tolerate a fence
-        body = body.split("```")[1]
-        body = body[4:] if body.lower().startswith("json") else body
     try:
-        rows = json.loads(body.strip())
+        rows = json.loads(strip_fence(raw))
     except json.JSONDecodeError as e:
         raise ValueError(f"model did not return JSON: {e}\n{raw[:300]}") from e
 
