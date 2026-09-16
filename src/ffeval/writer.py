@@ -52,6 +52,23 @@ Rules:
 4. Two or three sentences per player. No preamble, no sign-off.
 5. If there is nothing worth saying, say that plainly."""
 
+_REWRITE_RULES = """A fact-checker rejected some sentences you wrote. Rewrite each one.
+
+The same rules apply - no digits, and say where news came from. On top of them:
+
+1. The rejection reason tells you what the checker could not find in the packet. Fix THAT.
+2. Write only what the packet supports. Do not argue with the checker and do not restate
+   the sentence with softer wording; a hedge that still asserts the same thing fails again.
+3. If there is nothing supportable left to say, reply with an empty string. The sentence
+   will be dropped, which is a better outcome than an invented replacement."""
+
+_REWRITE_OUTPUT = """Reply with ONLY a JSON array, no prose and no code fence, one object
+per numbered sentence, in the order given:
+
+[{"n": 1, "replacement": "..."}]
+
+Use "" for a sentence that should be dropped."""
+
 _OUTPUT = """Reply with ONLY a JSON array, no prose and no code fence, one object per
 player, in the order given:
 
@@ -134,3 +151,40 @@ def write(
     raw = call_model(build_prompt(packets, starters), model)
     rows = json.loads(strip_fence(raw))
     return _sections(packets, starters, {r["player"]: r.get("notes", "") for r in rows})
+
+
+def build_rewrite_prompt(items: list[tuple[FactsPacket, str, str]]) -> str:
+    """Rejected sentences -> a prompt asking for replacements.
+
+    `items` is [(packet, sentence, why the auditor rejected it)]. Grouped by player so a
+    packet is sent once however many of its sentences failed - the packet is most of the
+    tokens.
+    """
+    blocks, n = [], 0
+    for packet in dict.fromkeys(p for p, _, _ in items):
+        lines = []
+        for p, sentence, reason in items:
+            if p is packet:
+                n += 1
+                lines.append(f"{n}. {sentence}\n   REJECTED: {reason}")
+        blocks.append(f"--- {packet.player} ---\n{packet.render()}\n\n"
+                      + "\n".join(lines))
+    return f"{_REWRITE_RULES}\n\n" + "\n\n".join(blocks) + f"\n\n{_REWRITE_OUTPUT}\n"
+
+
+def rewrite(items: list[tuple[FactsPacket, str, str]], model: str = MODEL) -> list[str]:
+    """One call for every rejected sentence on the roster. "" means drop it.
+
+    Raises on a short or unparseable reply rather than padding: a missing replacement
+    silently becomes a kept bad sentence, which is the one outcome this loop exists to
+    prevent.
+    """
+    if not items:
+        return []
+    raw = call_model(build_rewrite_prompt(items), model)
+    rows = json.loads(strip_fence(raw))
+    by_n = {int(r["n"]): str(r.get("replacement", "")).strip() for r in rows}
+    missing = [i for i in range(1, len(items) + 1) if i not in by_n]
+    if missing:
+        raise ValueError(f"model skipped rewrites {missing} of {len(items)}")
+    return [by_n[i] for i in range(1, len(items) + 1)]

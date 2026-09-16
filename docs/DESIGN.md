@@ -321,6 +321,26 @@ invents something, and that needs its sentences alone. Refused sentences are kep
 field rather than discarded, so a prompt that has started emitting digits shows up as visible
 output instead of quietly shrinking.
 
+**Only rejected sentences go back, and the budget is per roster.** Rewriting a whole
+player's notes would let a sentence that already passed come back worse, and no score could
+then say whether the loop helped — the same isolation argument as the two number lists. The
+budget is two rounds for the entire roster rather than two per sentence, because
+one-call-per-manager exists to keep a burst off a per-minute rate limit and per-sentence
+retries would quietly reintroduce it.
+
+**The writer is told why it failed, and that is a cost, not a free win.** Passing the
+auditor's reason back is what makes a retry better than a re-roll. It also teaches the
+writer to satisfy the auditor rather than the packet — studying for the test — and that
+matters more now that both are Gemini. Accepted deliberately, recorded here so a future
+score that looks too good has a suspect.
+
+**"Nothing supportable to say" is an available answer, and it gets used.** The rewrite
+prompt lets the model return an empty string instead of a replacement. On the first live
+run that is exactly what happened: told the packet did not support "a focal point of the
+offense and a high floor", the writer offered nothing rather than a softer version of the
+same claim, and the sentence was cut. A loop that can only ever produce replacements would
+have invented one.
+
 **Nothing personal goes into a prompt.** The free tier trains on submitted content and has no
 paid tier to upgrade into, so names and email addresses never enter a prompt. The model sees
 an anonymous roster; the email is assembled in our own code.
@@ -390,6 +410,8 @@ src/ffeval/              The library
   audit/evaluate.py      Scores an auditor against the labelled claims
   writer.py              Facts packet -> the prose a manager reads. Numbers are
                          templated here; the model only writes the words around them
+  pipeline.py            Write, audit, rewrite what failed, cut what never came
+                         clean. The only code that owns both sides
 
 checks/                  Runnable experiments and data gates
   out/                   Generated results — not committed, always rebuildable
@@ -542,10 +564,11 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **34 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
+| Test suite | **38 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
+| Rewrite loop ([pipeline.py](../src/ffeval/pipeline.py)) | **done — 1 of 6 sentences was unfaithful; the loop cut it** |
 | News search and the digging loop | not started |
 | ESPN roster fetch | not started |
 | Email, change-gating, cron | not started |
