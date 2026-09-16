@@ -329,6 +329,14 @@ an anonymous roster; the email is assembled in our own code.
 Writer and auditor are deliberately different models, which costs nothing on a free tier and
 removes a shared blind spot.
 
+**A packet reads from an allowlist of columns, never a blocklist.** `load_schedules()`
+carries `result`, `home_score` and `away_score` in the same row as `spread_line` and
+`total_line`. A blocklist admits whatever nflverse adds next, which is how the outcome of a
+game ends up in the evidence used to predict it. The allowlist in
+[ingest/packets.py](../src/ffeval/ingest/packets.py) fails closed instead. Betting lines
+themselves are fair game here — they are set before kickoff, unlike in a preseason draft
+model, where the same column would be cheating.
+
 **Search results carry their date, visibly.** A query for a player's injury returns articles
 from three seasons ago. Dates are filtered on and displayed, so a stale citation is obvious
 rather than quietly authoritative.
@@ -370,6 +378,8 @@ they're drafted last, close to random, and a team defense joins to the data diff
 src/ffeval/              The library
   ingest/ids.py          Name normalization, the alias table, team abbreviation fixes
   ingest/resolve.py      Draft names -> real player IDs, in two stages
+  ingest/packets.py      nflverse -> facts packets. Column allowlist and a strict
+                         week cutoff keep the outcome out of the evidence
   scoring/league.py      League settings, snake draft pick order
   scoring/lineup.py      Weekly lineup building and season scoring
   models/expected.py     Draft position -> expected points, fit leave-one-season-out
@@ -529,9 +539,10 @@ Actions secrets, never in the repo.
 | Verdict types ([verdicts.py](../src/ffeval/audit/verdicts.py)) | **done** |
 | Claim splitter + deterministic baseline checker ([auditor.py](../src/ffeval/audit/auditor.py)) | **done** |
 | Evaluation harness ([evaluate.py](../src/ffeval/audit/evaluate.py)) | **done — 33% recall measured** |
+| Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **29 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
+| Test suite | **34 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
