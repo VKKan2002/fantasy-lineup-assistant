@@ -250,3 +250,14 @@ def test_render_includes_news_ids():
     rendered = PACKET.render()
     for n in PACKET.news:
         assert f"[{n.id}]" in rendered
+
+
+def test_the_packet_tag_never_escapes_into_a_citation():
+    """The p1/ prefix stops cross-player citation inside a batched prompt. It must not
+    reach the caller: evaluate.py validates evidence against the packet's own unprefixed
+    ids, so a leaked tag would report every real citation as fabricated."""
+    raw = ('[{"n":1,"verdict":"supported","evidence_ids":["p1/matchup.spread_line"],'
+           '"reason":"a"},'
+           '{"n":2,"verdict":"not_a_claim","evidence_ids":[],"reason":"b"}]')
+    v = parse_response(raw, CLAIMS)
+    assert v[0].evidence_ids == ("matchup.spread_line",)

@@ -333,6 +333,20 @@ def _generate(client, types, model: str, prompt: str):
         raise
 
 
+_PACKET_TAG = re.compile(r"^p\d+/")
+
+
+def _untag(evidence_id: str) -> str:
+    """p1/form.game_w01 -> form.game_w01.
+
+    The tag is a prompting device that stops one player's sentence citing another's
+    evidence; it is not part of the data model. Letting it escape would make
+    evaluate.py's fabricated-citation check report every real citation as invented,
+    since it validates against the packet's own unprefixed ids.
+    """
+    return _PACKET_TAG.sub("", evidence_id)
+
+
 def strip_fence(raw: str) -> str:
     """Model text -> the JSON inside it, tolerating a ```json fence around it."""
     body = raw.strip()
@@ -365,7 +379,7 @@ def parse_response(raw: str, claims: list[str]) -> tuple[ClaimVerdict, ...]:
             ClaimVerdict(
                 claim=claim,                          # ours, not the model's echo
                 verdict=Verdict(str(r["verdict"]).strip().lower()),   # raises if unknown
-                evidence_ids=tuple(r.get("evidence_ids") or ()),
+                evidence_ids=tuple(_untag(str(x)) for x in (r.get("evidence_ids") or ())),
                 reason=str(r.get("reason", "")),
             )
         )
