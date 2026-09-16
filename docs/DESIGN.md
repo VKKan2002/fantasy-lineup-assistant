@@ -140,7 +140,25 @@ being explicit about: every call is an unpaid-services call, and Google's terms 
 state that content is used to improve their products and that human reviewers may read it.
 There is no upgrade path out of that. Hence the rule about personal data below.
 
-Two things to verify empirically rather than trust from docs:
+**Gemma is unreliable, and the SDK does not retry by default.** Ten identical calls to
+`gemma-4-31b-it` failed four times — two 503 "overloaded", two 500 — and took 8 minutes;
+the same prompt to `gemini-3.6-flash` succeeded 10 for 10 in 2 minutes. Both error codes are
+transient and both are already in the SDK's retry list, but `retry_options=None` means *never
+retry*, not *use the defaults*, so every transient failure was killing the run. Passing an empty
+`HttpRetryOptions()` turns on 5 attempts with exponential backoff and jitter. A follow-up run
+went 3 for 3 before it was stopped to conserve free-tier quota — a small sample, and reported as
+one.
+
+This is a scheduling risk, not just an annoyance: the pipeline runs from a weekly cron, so a
+transient failure that is not retried means no email goes out and nobody finds out. Retrying was
+preferred over switching the writer to Flash, because Flash is the auditor and a writer must not
+grade itself.
+
+Worth knowing: 429 is on that same retry list. Exhausting the *daily* free-tier quota will
+therefore burn ~30s of pointless backoff before failing. Harmless, and not worth special-casing
+until it happens.
+
+Two things still to verify empirically rather than trust from docs:
 
 - Whether Google Search grounding works with Gemma. Google's own pages disagree — the
   Gemma-on-Gemini-API page lists it as supported, while the pricing page marks it
@@ -275,6 +293,21 @@ underdog" — the 3 really did come from the packet header. Whether the sentence
 auditor's question, answered against a different list. Two layers, two questions, and neither one
 covering for the other is what keeps a bad score attributable.
 
+**The model never types a number.** Every figure in the output is rendered from a fact by
+`writer._line()`; the model receives the same facts and is asked for judgement and news only.
+Any sentence it returns carrying a digit is dropped, not trusted. A figure that cannot be typed
+cannot be mistyped, which retires most of what the auditor exists to catch and leaves the auditor
+as a backstop rather than the only defence. The rule holds in practice — asked for notes on a
+packet, the model wrote "a high volume of points" and "a high pressure rate" rather than 27.89
+and 34%.
+
+**Templated lines and model sentences never merge.** [writer.py](../src/ffeval/writer.py) returns
+them in separate fields all the way out. Auditing our own templated lines against our own facts
+proves nothing and would flatter every score; the number worth measuring is how often the *model*
+invents something, and that needs its sentences alone. Refused sentences are kept in a third
+field rather than discarded, so a prompt that has started emitting digits shows up as visible
+output instead of quietly shrinking.
+
 **Nothing personal goes into a prompt.** The free tier trains on submitted content and has no
 paid tier to upgrade into, so names and email addresses never enter a prompt. The model sees
 an anonymous roster; the email is assembled in our own code.
@@ -332,6 +365,8 @@ src/ffeval/              The library
   audit/auditor.py       Sentence splitter, the baseline checker, the LLM auditor,
                          and unsourced_numbers() - layer 2's numeric-source gate
   audit/evaluate.py      Scores an auditor against the labelled claims
+  writer.py              Facts packet -> the prose a manager reads. Numbers are
+                         templated here; the model only writes the words around them
 
 checks/                  Runnable experiments and data gates
   out/                   Generated results — not committed, always rebuildable
@@ -483,9 +518,10 @@ Actions secrets, never in the repo.
 | Evaluation harness ([evaluate.py](../src/ffeval/audit/evaluate.py)) | **done — 33% recall measured** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **24 tests** — deterministic layer, the gate, prompt/parse plumbing ([tests/test_auditor.py](../tests/test_auditor.py)) |
+| Test suite | **29 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
-| Templated numeric prose | not started |
+| Templated numeric prose | **done — see writer.py** |
+| Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
 | News search and the digging loop | not started |
 | ESPN roster fetch | not started |
 | Email, change-gating, cron | not started |

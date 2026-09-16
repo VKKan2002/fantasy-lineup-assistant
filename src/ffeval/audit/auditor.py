@@ -274,6 +274,13 @@ def call_model(prompt: str, model: str, cache_dir: Path | str = CACHE_DIR) -> st
             # We pass no tools, so the SDK's function-calling setup is dead weight
             # and warns on every call. Off.
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+            # Retries are OFF unless asked for - retry_options=None means "never retry"
+            # in the SDK, which is not what the name suggests. Measured: gemma-4-31b-it
+            # failed 4 of 10 identical calls with 500 and 503, both transient and both
+            # already in the SDK's retry list. Empty HttpRetryOptions() takes its
+            # defaults: 5 attempts, exponential backoff with jitter, capped at 60s.
+            # Nothing hand-rolled - the dependency already does this correctly.
+            http_options=types.HttpOptions(retry_options=types.HttpRetryOptions()),
         ),
     )
     text = resp.text or ""
