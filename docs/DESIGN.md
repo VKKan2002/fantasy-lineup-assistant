@@ -112,7 +112,7 @@ cannot catch a wrong number upstream.
 | Storage | Parquet / DuckDB | Pre-aggregated, no play-by-play needed |
 | Rosters | ESPN | Where the league actually lives |
 | Orchestration | LangGraph | Real branching on injury status, with failure paths |
-| Writer model | Gemma 4 31B (`gemma-4-31b-it`) | Free tier, hosted, 256K context |
+| Writer model | `gemini-3.1-flash-lite` | Reliable and fast where Gemma was neither; see below |
 | Auditor model | A different hosted model | A writer shouldn't grade itself |
 | News | Fetch known sources, search the tail | Documents live five days; nothing to index |
 | Email | Resend | Hosts the unsubscribe page, so nothing of ours needs to run |
@@ -148,6 +148,19 @@ retry*, not *use the defaults*, so every transient failure was killing the run. 
 `HttpRetryOptions()` turns on 5 attempts with exponential backoff and jitter. A follow-up run
 went 3 for 3 before it was stopped to conserve free-tier quota — a small sample, and reported as
 one.
+
+**So the writer moved to `gemini-3.1-flash-lite`,** picked on evidence rather than spec sheet.
+Given the same packet, `gemini-2.5-flash-lite` wrote "He is expected to practise normally this
+week" — the coach's opinion stated as the tool's own fact, which is exactly what Fork 3 of
+eval/LABELLING_RULES.md exists to catch — and quoted the 2023 shoulder report the prompt tells it
+to ignore. `gemini-3.1-flash-lite` attributed every claim, ignored the stale item, and returned in
+2.7s against Gemma's 45.
+
+The cost is stated plainly: writer and auditor are now both Gemini, which is weaker independence
+than Gemma's separate lineage gave. Accepted because numbers are templated — the writer no longer
+produces facts for an auditor to be fooled by, only commentary. It is also decidable rather than
+arguable: run both pairings against the labelled set and compare what the auditor catches. If the
+Gemini pairing catches less, the blind spot is real and shows up as a number.
 
 This is a scheduling risk, not just an annoyance: the pipeline runs from a weekly cron, so a
 transient failure that is not retried means no email goes out and nobody finds out. Retrying was

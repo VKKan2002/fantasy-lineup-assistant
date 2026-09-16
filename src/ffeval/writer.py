@@ -26,7 +26,14 @@ from dataclasses import dataclass
 from .audit.auditor import call_model, split_claims, strip_fence
 from .audit.packet import NUMBER, Fact, FactsPacket
 
-MODEL = "gemma-4-31b-it"   # writer != auditor, deliberately. See docs/DESIGN.md.
+# Writer != auditor, so one never grades its own work. Both are Gemini now, which is
+# weaker independence than Gemma gave - and a deliberate trade, recorded in DESIGN.md:
+# gemma-4-31b-it failed 4 of 10 calls at 45s each, and with numbers templated the writer
+# no longer produces facts for an auditor to be fooled by, only commentary.
+# Picked on evidence: asked for notes on the same packet, gemini-2.5-flash-lite stated
+# the coach's opinion as fact and quoted a 2023 news item, both against the prompt's
+# rules. This one attributed every claim and ignored the stale item.
+MODEL = "gemini-3.1-flash-lite"
 
 _RULES = """You are writing weekly fantasy football notes for one manager.
 
