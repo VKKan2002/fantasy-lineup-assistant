@@ -184,10 +184,35 @@ CLAIMS = ["Buffalo is favoured by 12.5 points.", "I'd start him."]
 
 def test_prompt_contains_packet_ids_and_numbered_claims():
     """The model can only cite ids it can see, and must know which sentence is which."""
-    prompt = build_prompt(PACKET, CLAIMS)
-    assert "[matchup.spread_line]" in prompt
-    assert "1. Buffalo is favoured by 12.5 points." in prompt
+    prompt = build_prompt([(PACKET, CLAIMS)])
+    assert "[p1/matchup.spread_line]" in prompt
+    assert "1. [p1] Buffalo is favoured by 12.5 points." in prompt
     assert "UNTRUSTED NEWS" in prompt
+
+
+def test_a_roster_prompt_gives_each_player_its_own_evidence_namespace():
+    """One call for the whole roster - 20 free requests a day does not survive one per
+    player. Every packet offers the same fact ids, so without a namespace there is no way
+    to tell one player's week-1 score from another's. Prefixed, a p1 sentence cannot NAME
+    a p2 fact, which beats noticing afterwards that it did.
+    """
+    prompt = build_prompt([(PACKET, ["one."]), (PACKET, ["two.", "three."])])
+
+    assert "[p1/form.game_w01]" in prompt and "[p2/form.game_w01]" in prompt
+    assert "1. [p1] one." in prompt
+    assert "2. [p2] two." in prompt and "3. [p2] three." in prompt
+    assert "SENTENCES TO JUDGE (3)" in prompt      # numbered across the whole roster
+
+
+def test_a_roster_result_is_split_back_per_packet():
+    """One call in, one AuditResult per player out, sentences kept in their own bucket."""
+    raw = ('[{"n":1,"verdict":"supported","evidence_ids":["p1/matchup.spread_line"],'
+           '"reason":"a"},'
+           '{"n":2,"verdict":"not_a_claim","evidence_ids":[],"reason":"b"},'
+           '{"n":3,"verdict":"contradicted","evidence_ids":[],"reason":"c"}]')
+    flat = parse_response(raw, ["one.", "two.", "three."])
+    assert [v.verdict for v in flat] == [
+        Verdict.SUPPORTED, Verdict.NOT_A_CLAIM, Verdict.CONTRADICTED]
 
 
 def test_parse_tolerates_a_code_fence_and_row_order():

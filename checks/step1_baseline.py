@@ -25,7 +25,7 @@ import nflreadpy as nfl
 import polars as pl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ffeval.models.expected import fit_expected_points
+from ffeval.models.expected import fit_expected_points, project_ppg
 from ffeval.scoring.league import League, snake_pick_numbers
 from ffeval.scoring.lineup import best_lineup
 
@@ -34,7 +34,6 @@ df = pl.read_parquet(POOL)
 SEASONS = sorted(df["season"].unique().to_list())
 LEAGUE = League(rounds=12)
 TARGET = {"QB": 2, "RB": 4, "WR": 4, "TE": 2}          # sums to 12
-SHRINK_K = 3.0
 RNG = random.Random(20260830)
 
 # ---------------------------------------------------------------- realized weekly points
@@ -111,15 +110,12 @@ def rule_blend(season, p, week):
     return 0.5 * rule_season(season, p, week) + 0.5 * rule_last3(season, p, week)
 
 def rule_shrunk(season, p, week):
-    """Trust ADP early, trust observed production as games accumulate."""
-    h = prior_games(season, p["gsis_id"], week)
-    n = len(h)
-    prior = adp_ppg(season, p)
-    if n == 0:
-        return prior
-    obs = sum(h) / n
-    w = n / (n + SHRINK_K)
-    return w * obs + (1 - w) * prior
+    """Trust ADP early, trust observed production as games accumulate.
+
+    Imported, not copied. The 91.2% this script prints has to be produced by the code
+    that runs on a Sunday, or the number stops describing the thing that ships.
+    """
+    return project_ppg(prior_games(season, p["gsis_id"], week), adp_ppg(season, p))
 
 RULES = {
     "adp_static": rule_adp,

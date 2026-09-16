@@ -44,6 +44,10 @@ class FactsPacket:
     week: int
     facts: tuple[Fact, ...]
     news: tuple[NewsItem, ...]
+    # Joining a packet to anything else by NAME is how a Hall of Fame back's season got
+    # credited to his son, 81 times. Blank only for the hand-typed packets that predate
+    # the builder; everything generated carries it.
+    player_id: str = ""
 
     @classmethod
     def load(cls, path: str | Path) -> FactsPacket:
@@ -59,6 +63,7 @@ class FactsPacket:
             week=data["week"],
             facts=tuple(Fact(**fact) for fact in data["facts"]),
             news=tuple(NewsItem(**news) for news in data["news"]),
+            player_id=data.get("player_id", ""),
         )
 
     def fact(self, fact_id: str) -> Fact | None:
@@ -69,15 +74,23 @@ class FactsPacket:
         """
         return next((f for f in self.facts if f.id == fact_id), None)
 
-    def render(self) -> str:
-        """Render the facts packet as a string."""
+    def render(self, prefix: str = "") -> str:
+        """Render the facts packet as a string.
+
+        `prefix` namespaces every evidence id - "p1/form.game_w01". When a whole roster
+        goes into one prompt, every packet otherwise offers the same ids, and there is no
+        way to tell Allen's week-1 score from Robinson's. Prefixed, a sentence about one
+        player has no way to NAME another player's fact, which beats detecting it after
+        the fact.
+        """
+        tag = f"{prefix}/" if prefix else ""
         facts_str = "\n".join(
-            f"[{fact.id}] {fact.label}: {fact.value} {fact.unit} "
+            f"[{tag}{fact.id}] {fact.label}: {fact.value} {fact.unit} "
             f"(source: {fact.source}, as of: {fact.as_of})"
             for fact in self.facts
         )
         news_str = "\n".join(
-            f"[{news.id}] {news.text} (url: {news.url}, published: {news.published})"
+            f"[{tag}{news.id}] {news.text} (url: {news.url}, published: {news.published})"
             for news in self.news
         )
         return (

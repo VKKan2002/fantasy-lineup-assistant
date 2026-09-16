@@ -43,6 +43,26 @@ available points and an omniscient cheater reaches only 94.0%, so the lineup dec
 nearly saturated — there is nothing for model-driven exploration to discover. Letting a
 model pick tools would add failure modes to a problem that doesn't have any left.
 
+**The free tier is 20 requests a day, per model** — and that, not a per-minute burst, is
+the binding constraint. A 429 on a real twelve-player roster made it concrete: the writer had
+always packed a whole roster into one prompt, but the auditor called once per player, so a
+single run spent roughly twenty audit calls and exhausted the day. The auditor now batches
+the same way. Every packet in a batched prompt is tagged (`p1`, `p2`) and its evidence ids
+are namespaced with that tag, so a p1 sentence has no way to NAME a p2 fact — prevention
+rather than detection, the same choice as the packet builder's column allowlist.
+
+Stated cost: the eval set has **one** packet, so a batch of one is identical to no batch and
+the measured recall still stands — but that also means the eval set cannot detect
+cross-player citation, which is the exact risk batching introduces. Unmeasurable until there
+are more packets.
+
+**Running out of quota is a first-class outcome, not a crash.** The lineup, the injury
+filter, the projection and every printed figure need no model at all, so when the allowance
+is gone that half still goes out and the commentary does not. Prose that was written but
+never audited moves to `dropped` rather than shipping — an unchecked claim is the single
+thing this pipeline exists to stop, and "no notes today" is a better email than an unverified
+one.
+
 One LLM call per manager, not per player. Gemma 4 has a 256K context window, so a full
 roster with stats and news fits in one request. Per-player calls would mean roughly 340
 requests a week arriving in a burst when cron fires, which is how you trip a per-minute rate
@@ -252,6 +272,15 @@ deliberately deviates from raw points to price scarcity. Within position, consen
 quarterbacks in the first fifteen picks of 2022. Correlation is blind to roster constraints.
 
 ### From the assistant design
+
+**Anyone who cannot physically play is removed before the lineup is built, not after.**
+`best_lineup()` only ever sees a number, so a player ruled Out has a fine projection - good
+draft position, good history - and gets started. On the first live run that put CeeDee Lamb
+in the starting lineup directly above a note saying he was out for the week. A bye was
+filtered from the start; Out was not, and the difference was invisible until a real roster
+ran through it. Only `Out` blocks: Doubtful and Questionable are probabilities rather than
+facts, and the rule here is that the projection carries uncertainty while the model comments
+on it, neither of them overruling the lineup.
 
 **The model never sets the lineup.** [best_lineup()](../src/ffeval/scoring/lineup.py) is
 provably optimal given projections and already measured. The model writes prose. If it
@@ -564,11 +593,13 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **38 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
+| Test suite | **53 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
 | Rewrite loop ([pipeline.py](../src/ffeval/pipeline.py)) | **done — 1 of 6 sentences was unfaithful; the loop cut it** |
+| Projection rule + lineup decision | **done — port verified, backtest still prints 1,631 points** |
+| Batched auditor + quota fallback | **built, UNTESTED live — the 20/day cap went first** |
 | News search and the digging loop | not started |
 | ESPN roster fetch | not started |
 | Email, change-gating, cron | not started |
@@ -588,6 +619,11 @@ That gave the LLM auditor a floor to beat and a named job: **rule on sentences w
 numbers, and be able to say "absent" rather than "wrong."**
 
 ### What the LLM auditor measured
+
+**Re-measure owed.** This 93% was produced under `PROMPT_VERSION` 1. The prompt is now
+version 2 — one call per roster, evidence ids namespaced — so the figure below describes a
+prompt that is no longer what ships. Re-running costs one call, and is owed before the number
+is quoted anywhere again.
 
 Gemini 3.6 Flash, temperature 0, one call per packet: **93% recall on unfaithful claims against
 the baseline's 33%**, zero false alarms, and `not_in_packet` produced correctly 7 times out of

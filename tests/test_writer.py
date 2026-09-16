@@ -46,4 +46,5 @@ def test_prompt_carries_the_decision_and_the_untrusted_news_markers():
     prompt = build_prompt([PACKET], STARTERS)
     assert "Josh Allen (START)" in prompt
     assert "BEGIN UNTRUSTED NEWS" in prompt
-    assert "NEVER write a digit" in prompt
+    assert "NEVER state a number" in prompt
+    assert "spelled out in words" in prompt      # the loophole the first wording left

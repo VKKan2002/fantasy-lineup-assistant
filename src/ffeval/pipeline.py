@@ -22,14 +22,70 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from .audit.auditor import audit_claims
+from .audit.auditor import QuotaExhausted, audit_roster
 from .audit.packet import FactsPacket
 from .audit.verdicts import UNFAITHFUL
+from .models.expected import project_ppg
+from .scoring.league import League
+from .scoring.lineup import best_lineup
 from .writer import MODEL as WRITER_MODEL
-from .writer import PlayerSection, rewrite, write
+from .writer import PlayerSection, facts_only, rewrite, write
 
 AUDITOR_MODEL = "gemini-3.6-flash"   # not the writer's. See docs/DESIGN.md.
 BUDGET = 2                           # rewrite rounds before a sentence is cut
+
+
+def _can_play(packet: FactsPacket) -> bool:
+    """Is this player eligible to be in a lineup at all?
+
+    best_lineup() only ever sees a number, so anyone who physically cannot play has to be
+    removed before it runs. A player ruled Out has a fine projection - good draft position,
+    good history - and will otherwise be started, which is how CeeDee Lamb was slotted in
+    beside a note saying he was out for the week.
+
+    Only "Out" blocks. Doubtful and Questionable are probabilities, not facts, and this
+    project's rule is that the projection handles uncertainty while the model comments on
+    it - neither of them gets to overrule the lineup.
+    """
+    for f in packet.facts:
+        if f.id == "bye.is_bye_week" and f.value:
+            return False
+        if f.id == "injury.report_status" and str(f.value).lower() == "out":
+            return False
+    return True
+
+
+def decide_starters(
+    packets: list[FactsPacket],
+    priors: dict[str, float],
+    history: dict[str, list[float]],
+    league: League | None = None,
+) -> tuple[set[str], dict[str, float | None]]:
+    """Who to start this week, and what each player was projected at.
+
+    The model does not appear anywhere in this function, and that is the design rather
+    than an omission: best_lineup() is provably optimal given projections, and a
+    twelve-line rule already captures 91.2% of the available points against 94.0% for a
+    cheater who knows everything. There is nothing here for a model to discover.
+
+    A player the rule cannot rank - undrafted and yet to play - is left out of the lineup
+    rather than projected at zero. Zero is a claim; None is the truth. They come back in
+    the projections mapping so the caller can say who was skipped and why.
+
+    A player on a bye is excluded too. best_lineup() would happily start him otherwise,
+    since it only sees a number.
+    """
+    league = league or League()
+    projections: dict[str, float | None] = {}
+    available = []
+    for p in packets:
+        proj = project_ppg(history.get(p.player_id, []), priors.get(p.player_id))
+        projections[p.player] = proj
+        if proj is not None and _can_play(p):
+            available.append((p.player, p.position, proj))
+
+    _, chosen = best_lineup(available, league)
+    return {name for name, _, _ in chosen}, projections
 
 
 @dataclass(frozen=True)
@@ -53,6 +109,10 @@ class Rewrite:
 class Result:
     sections: tuple[PlayerSection, ...]
     rewrites: tuple[Rewrite, ...]
+    # Empty when the run completed. Set when the day's quota ran out and the commentary
+    # was dropped - the lineup and the figures still went out, because neither needs a
+    # model. Unaudited prose never ships.
+    fallback_reason: str = ""
 
     @property
     def cut(self) -> tuple[Rewrite, ...]:
@@ -71,11 +131,15 @@ def _flagged(
     `only` limits the re-audit to players whose notes actually changed; the rest cannot
     have new verdicts and re-asking would just spend quota.
     """
+    todo = [(i, p, list(s.prose)) for i, (p, s) in enumerate(zip(packets, sections))
+            if s.prose and (only is None or i in only)]
+    if not todo:
+        return []
+
     out = []
-    for i, (packet, section) in enumerate(zip(packets, sections)):
-        if not section.prose or (only is not None and i not in only):
-            continue
-        for v in audit_claims(packet, list(section.prose), model).verdicts:
+    results = audit_roster([(p, claims) for _, p, claims in todo], model)
+    for (i, packet, _), result in zip(todo, results):
+        for v in result.verdicts:
             if v.verdict in UNFAITHFUL:
                 out.append((i, packet, v.claim, v.verdict.value, v.reason))
     return out
@@ -93,9 +157,39 @@ def run(
     writer_model: str = WRITER_MODEL,
     auditor_model: str = AUDITOR_MODEL,
 ) -> Result:
-    """Facts in, audited notes out. At most BUDGET rewrite calls for the whole roster."""
-    sections = list(write(packets, starters, writer_model))
+    """Facts in, audited notes out. At most BUDGET rewrite calls for the whole roster.
+
+    Runs out of quota gracefully. The free tier grants 20 requests a day per model, and
+    the lineup, the injury filter and every printed figure need no model at all - so when
+    the allowance is gone that half still goes out, and the commentary does not. Prose
+    that was written but never audited is moved to `dropped` rather than shipped: an
+    unchecked claim is the one thing this pipeline exists to stop.
+    """
+    sections: list[PlayerSection] = []
     history: list[Rewrite] = []
+    try:
+        sections = list(write(packets, starters, writer_model))
+        return _run_loop(packets, sections, history, writer_model, auditor_model)
+    except QuotaExhausted as e:
+        if not sections:
+            sections = list(facts_only(packets, starters))
+        return Result(
+            sections=tuple(replace(s, prose=(), dropped=s.dropped + s.prose)
+                           for s in sections),
+            rewrites=tuple(history),
+            fallback_reason=f"daily model quota exhausted; lineup and figures only - {e}",
+        )
+
+
+def _run_loop(
+    packets: list[FactsPacket],
+    sections: list[PlayerSection],
+    history: list[Rewrite],
+    writer_model: str,
+    auditor_model: str,
+) -> Result:
+    """The audit/rewrite rounds. Split out so run() can wrap the whole thing in one
+    quota guard without burying the loop in a try block."""
     changed: set[int] | None = None
 
     for rnd in range(1, BUDGET + 1):

@@ -182,6 +182,27 @@ def _news_teammates(inj: pl.DataFrame, team: str, player_id: str,
     return out
 
 
+def prior_ppg_history(
+    player_ids: list[str], season: int, week: int
+) -> dict[str, list[float]]:
+    """player id -> PPR points in every week before `week`, in order.
+
+    Separate from build_packets on purpose. The projection rule weighs the observation
+    by HOW MANY games back it goes, so it needs all of them - while a packet carries only
+    the last two, because twelve weeks of individual scores is noise in an email and every
+    labelled claim is tied to the twelve facts a packet already has.
+    """
+    rows = (nfl.load_player_stats(seasons=[season], summary_level="week")
+              .filter((pl.col("season_type") == "REG") & (pl.col("week") < week)
+                      & pl.col("player_id").is_in(player_ids))
+              .sort("week")
+              .select("player_id", "fantasy_points_ppr").to_dicts())
+    out: dict[str, list[float]] = {}
+    for r in rows:
+        out.setdefault(r["player_id"], []).append(float(r["fantasy_points_ppr"] or 0.0))
+    return out
+
+
 def build_packets(player_ids: list[str], season: int, week: int) -> list[FactsPacket]:
     """One packet per player id, for one season and week. Fetches each table once.
 
@@ -238,5 +259,6 @@ def build_packets(player_ids: list[str], season: int, week: int) -> list[FactsPa
             player=name, position=position, team=team, opponent=opponent,
             season=season, week=week, facts=tuple(facts),
             news=tuple(_news_teammates(inj, team, pid, season, week)),
+            player_id=pid,
         ))
     return packets

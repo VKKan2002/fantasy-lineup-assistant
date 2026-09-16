@@ -48,7 +48,7 @@ from .verdicts import AuditResult, ClaimVerdict, Verdict
 
 # Bumped whenever the LLM prompt text changes. Stored on every AuditResult so an old
 # result file is never silently compared against a newer prompt.
-PROMPT_VERSION = 1
+PROMPT_VERSION = 2   # 2: one prompt per ROSTER, evidence ids namespaced per player
 
 # Abbreviations whose full stop is not a sentence end. Only ones followed by a capital
 # letter matter - "No. 3" already survives, because a digit is not a capital.
@@ -200,6 +200,15 @@ def unsourced_numbers(packet: FactsPacket, claim: str) -> list[str]:
 
 CACHE_DIR = Path(".cache/model")
 
+
+class QuotaExhausted(RuntimeError):
+    """The daily free-tier allowance is gone. Distinct from every other failure.
+
+    A 500 or a 503 is worth retrying; this is not - the free tier grants 20 requests per
+    day per model, and no amount of backoff conjures the 21st. The caller's job is to ship
+    what does not need a model rather than to try again.
+    """
+
 # The rules the model is held to. Kept as one string so the prompt and
 # eval/LABELLING_RULES.md can be diffed by eye. Forks 1a, 2a, 3b, 4a.
 _RULES = """You are auditing sentences against an evidence packet.
@@ -227,6 +236,8 @@ Rules:
    contradicted > not_in_packet > supported > not_a_claim.
 5. Every "supported" needs at least one id in evidence_ids. If you cannot name the
    evidence, it is not supported.
+6. Each sentence is tagged with the packet it belongs to, like [p1]. Judge it against THAT
+   packet only, and cite only ids from it. A p1 sentence may never rest on p2 evidence.
 """
 
 _OUTPUT_FORMAT = """Reply with ONLY a JSON array, no prose and no code fence. One object per
@@ -237,14 +248,31 @@ sentence, in order:
 Include every sentence exactly once. reason is one short sentence."""
 
 
-def build_prompt(packet: FactsPacket, claims: list[str]) -> str:
-    """Assemble the auditor prompt: rules, packet, numbered sentences, output format."""
-    numbered = "\n".join(f"{i}. {c}" for i, c in enumerate(claims, start=1))
+def build_prompt(items: list[tuple[FactsPacket, list[str]]]) -> str:
+    """One prompt for a whole roster: rules, every packet, every sentence, output format.
+
+    A roster in one call rather than one call per player, because the free tier grants 20
+    requests a day per model and a twelve-player roster was spending all of them. The
+    writer has always worked this way; the auditor was the odd one out.
+
+    Every packet's ids are namespaced with its tag, so a p1 sentence has no way to name a
+    p2 fact. That is prevention rather than detection - the same reason the packet builder
+    reads an allowlist of columns instead of blocking the bad ones.
+    """
+    blocks, numbered, n = [], [], 0
+    for i, (packet, claims) in enumerate(items, start=1):
+        tag = f"p{i}"
+        blocks.append(
+            f"--- EVIDENCE PACKET {tag} ({packet.player}) ---\n{packet.render(tag)}")
+        for claim in claims:
+            n += 1
+            numbered.append(f"{n}. [{tag}] {claim}")
     return (
         f"{_RULES}\n"
-        f"--- EVIDENCE PACKET ---\n{packet.render()}\n"
-        f"--- SENTENCES TO JUDGE ({len(claims)}) ---\n{numbered}\n\n"
-        f"{_OUTPUT_FORMAT}\n"
+        + "\n\n".join(blocks)
+        + f"\n\n--- SENTENCES TO JUDGE ({n}) ---\n"
+        + "\n".join(numbered)
+        + f"\n\n{_OUTPUT_FORMAT}\n"
     )
 
 
@@ -266,27 +294,43 @@ def call_model(prompt: str, model: str, cache_dir: Path | str = CACHE_DIR) -> st
 
     load_dotenv()
     client = genai.Client()                 # reads GEMINI_API_KEY
-    resp = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0,
-            # We pass no tools, so the SDK's function-calling setup is dead weight
-            # and warns on every call. Off.
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-            # Retries are OFF unless asked for - retry_options=None means "never retry"
-            # in the SDK, which is not what the name suggests. Measured: gemma-4-31b-it
-            # failed 4 of 10 identical calls with 500 and 503, both transient and both
-            # already in the SDK's retry list. Empty HttpRetryOptions() takes its
-            # defaults: 5 attempts, exponential backoff with jitter, capped at 60s.
-            # Nothing hand-rolled - the dependency already does this correctly.
-            http_options=types.HttpOptions(retry_options=types.HttpRetryOptions()),
-        ),
-    )
+    resp = _generate(client, types, model, prompt)
     text = resp.text or ""
     cache.mkdir(parents=True, exist_ok=True)
     hit.write_text(text)
     return text
+
+
+def _generate(client, types, model: str, prompt: str):
+    """The call itself, with quota exhaustion given its own exception.
+
+    A 429 is not a transient failure worth retrying - the daily allowance does not come
+    back in sixty seconds. Naming it lets the pipeline ship the half of its output that
+    needs no model at all.
+    """
+    from google.genai import errors
+
+    config = types.GenerateContentConfig(
+        temperature=0,
+        # We pass no tools, so the SDK's function-calling setup is dead weight and warns
+        # on every call. Off.
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+        # Retries are OFF unless asked for - retry_options=None means "never retry" in
+        # the SDK, which is not what the name suggests. Measured: gemma-4-31b-it failed 4
+        # of 10 identical calls with 500 and 503, both transient and both already in the
+        # SDK's retry list. An empty HttpRetryOptions() takes its defaults: 5 attempts,
+        # exponential backoff with jitter, capped at 60s. Nothing hand-rolled - the
+        # dependency already does this correctly.
+        http_options=types.HttpOptions(retry_options=types.HttpRetryOptions()),
+    )
+    try:
+        return client.models.generate_content(
+            model=model, contents=prompt, config=config
+        )
+    except errors.ClientError as e:
+        if getattr(e, "code", None) == 429:
+            raise QuotaExhausted(str(e)[:300]) from e
+        raise
 
 
 def strip_fence(raw: str) -> str:
@@ -328,14 +372,25 @@ def parse_response(raw: str, claims: list[str]) -> tuple[ClaimVerdict, ...]:
     return tuple(out)
 
 
+def audit_roster(
+    items: list[tuple[FactsPacket, list[str]]], model: str
+) -> list[AuditResult]:
+    """Judge a whole roster in ONE call. Returns one result per packet, in order."""
+    flat = [c for _, claims in items for c in claims]
+    if not flat:
+        return [AuditResult((), model, PROMPT_VERSION) for _ in items]
+
+    verdicts = parse_response(call_model(build_prompt(items), model), flat)
+    out, k = [], 0
+    for _, claims in items:
+        out.append(AuditResult(tuple(verdicts[k:k + len(claims)]), model, PROMPT_VERSION))
+        k += len(claims)
+    return out
+
+
 def audit_claims(packet: FactsPacket, claims: list[str], model: str) -> AuditResult:
-    """Judge an already-split list of sentences. One model call for all of them."""
-    raw = call_model(build_prompt(packet, claims), model)
-    return AuditResult(
-        verdicts=parse_response(raw, claims),
-        model=model,
-        prompt_version=PROMPT_VERSION,
-    )
+    """One packet. A roster of one, so there is only ever one prompt to maintain."""
+    return audit_roster([(packet, claims)], model)[0]
 
 
 def audit(packet: FactsPacket, text: str, model: str) -> AuditResult:

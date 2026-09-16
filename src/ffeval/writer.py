@@ -42,9 +42,12 @@ The lineup decision is already made and is not yours to change. If you disagree,
 in words.
 
 Rules:
-1. NEVER write a digit. Not one. The numbers are printed separately by the program that
-   calls you. Write "a strong outing", never "38.76 points". A sentence containing any
-   digit will be thrown away.
+1. NEVER state a number - not as digits, and not spelled out in words. The figures are
+   printed separately by the program that calls you. Write "a strong outing", never
+   "38.76 points" and never "thirty-eight point seven six points". No ranks either:
+   "one of the most generous defences", not "twenty-ninth". A sentence containing a
+   digit is thrown away automatically, and a sentence spelling a number out defeats the
+   point of the rule rather than satisfying it.
 2. Say where news came from. "The coach said Tuesday..." is fine. Stating the same thing
    as fact - "he is expected to practise normally" - is not, because a report supports
    that someone SAID something, not the thing itself.
@@ -54,7 +57,8 @@ Rules:
 
 _REWRITE_RULES = """A fact-checker rejected some sentences you wrote. Rewrite each one.
 
-The same rules apply - no digits, and say where news came from. On top of them:
+The same rules apply - no numbers in any form, and say where news came from. On top of
+them:
 
 1. The rejection reason tells you what the checker could not find in the packet. Fix THAT.
 2. Write only what the packet supports. Do not argue with the checker and do not restate
@@ -142,6 +146,16 @@ def _sections(
             )
         )
     return out
+
+
+def facts_only(packets: list[FactsPacket], starters: set[str]) -> list[PlayerSection]:
+    """Sections with no model involved anywhere: the lineup and the templated figures.
+
+    Every number already comes from a fact rather than the model, so this is not a
+    degraded guess - it is the same figures without the commentary. The fallback when the
+    API is unavailable or the day's quota is gone.
+    """
+    return _sections(packets, starters, {})
 
 
 def write(
