@@ -390,6 +390,13 @@ model, where the same column would be cheating.
 from three seasons ago. Dates are filtered on and displayed, so a stale citation is obvious
 rather than quietly authoritative.
 
+**One copy of the loop.** The rewrite loop was first a for-loop in `pipeline.run()`, then
+rebuilt as a LangGraph graph, and for a while both existed with a test proving they agreed.
+The for-loop was deleted. A test that two copies agree only says they agree on the cases
+someone thought to write; one copy can't disagree with anything. The graph kept the job
+because the loop is a cycle with a budget and an exit condition, and the quota fallback is a
+visible edge rather than an `except` buried in a function.
+
 **"I couldn't find anything" is a valid, visible answer,** and there is always a plain
 statistical fallback, so the tool still works when the clever parts are down.
 
@@ -439,8 +446,9 @@ src/ffeval/              The library
   audit/evaluate.py      Scores an auditor against the labelled claims
   writer.py              Facts packet -> the prose a manager reads. Numbers are
                          templated here; the model only writes the words around them
-  pipeline.py            Write, audit, rewrite what failed, cut what never came
-                         clean. The only code that owns both sides
+  pipeline.py            Lineup decision, plus the helpers the rewrite loop uses
+  graph.py               The rewrite loop as a LangGraph graph: write, audit,
+                         rewrite what failed, cut what never came clean
 
 checks/                  Runnable experiments and data gates
   out/                   Generated results — not committed, always rebuildable
@@ -593,11 +601,11 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **53 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer ([tests/](../tests/)) |
+| Test suite | **54 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
-| Rewrite loop ([pipeline.py](../src/ffeval/pipeline.py)) | **done — 1 of 6 sentences was unfaithful; the loop cut it** |
+| Rewrite loop ([graph.py](../src/ffeval/graph.py), LangGraph) | **done — 1 of 6 sentences was unfaithful; the loop cut it** |
 | Projection rule + lineup decision | **done — port verified, backtest still prints 1,631 points** |
 | Batched auditor + quota fallback | **built, UNTESTED live — the 20/day cap went first** |
 | News search and the digging loop | not started |

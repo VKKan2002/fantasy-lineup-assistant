@@ -1,4 +1,6 @@
-"""Write, audit, rewrite what failed, and delete whatever never came clean.
+"""The pieces the rewrite loop is built from. The loop itself is in graph.py.
+
+Write, audit, rewrite what failed, and delete whatever never came clean.
 
 This is the loop docs/DESIGN.md calls genuinely agentic: it runs until every claim is
 grounded or the budget is spent, terminating on a verifiable condition rather than a fixed
@@ -22,14 +24,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from .audit.auditor import QuotaExhausted, audit_roster
+from .audit.auditor import audit_roster
 from .audit.packet import FactsPacket
 from .audit.verdicts import UNFAITHFUL
 from .models.expected import project_ppg
 from .scoring.league import League
 from .scoring.lineup import best_lineup
-from .writer import MODEL as WRITER_MODEL
-from .writer import PlayerSection, facts_only, rewrite, write
+from .writer import PlayerSection
 
 AUDITOR_MODEL = "gemini-3.6-flash"   # not the writer's. See docs/DESIGN.md.
 BUDGET = 2                           # rewrite rounds before a sentence is cut
@@ -105,21 +106,6 @@ class Rewrite:
     outcome: str          # "replaced", "dropped" (writer gave up), "deleted" (budget out)
 
 
-@dataclass(frozen=True)
-class Result:
-    sections: tuple[PlayerSection, ...]
-    rewrites: tuple[Rewrite, ...]
-    # Empty when the run completed. Set when the day's quota ran out and the commentary
-    # was dropped - the lineup and the figures still went out, because neither needs a
-    # model. Unaudited prose never ships.
-    fallback_reason: str = ""
-
-    @property
-    def cut(self) -> tuple[Rewrite, ...]:
-        """Everything that never came clean - dropped by the writer or cut at the budget."""
-        return tuple(r for r in self.rewrites if r.outcome in ("dropped", "deleted"))
-
-
 def _flagged(
     packets: list[FactsPacket],
     sections: list[PlayerSection],
@@ -149,77 +135,3 @@ def _apply(section: PlayerSection, swaps: dict[str, str]) -> PlayerSection:
     """Swap rejected sentences for their replacements; an empty replacement removes it."""
     prose = tuple(swaps.get(s, s) for s in section.prose)
     return replace(section, prose=tuple(s for s in prose if s))
-
-
-def run(
-    packets: list[FactsPacket],
-    starters: set[str],
-    writer_model: str = WRITER_MODEL,
-    auditor_model: str = AUDITOR_MODEL,
-) -> Result:
-    """Facts in, audited notes out. At most BUDGET rewrite calls for the whole roster.
-
-    Runs out of quota gracefully. The free tier grants 20 requests a day per model, and
-    the lineup, the injury filter and every printed figure need no model at all - so when
-    the allowance is gone that half still goes out, and the commentary does not. Prose
-    that was written but never audited is moved to `dropped` rather than shipped: an
-    unchecked claim is the one thing this pipeline exists to stop.
-    """
-    sections: list[PlayerSection] = []
-    history: list[Rewrite] = []
-    try:
-        sections = list(write(packets, starters, writer_model))
-        return _run_loop(packets, sections, history, writer_model, auditor_model)
-    except QuotaExhausted as e:
-        if not sections:
-            sections = list(facts_only(packets, starters))
-        return Result(
-            sections=tuple(replace(s, prose=(), dropped=s.dropped + s.prose)
-                           for s in sections),
-            rewrites=tuple(history),
-            fallback_reason=f"daily model quota exhausted; lineup and figures only - {e}",
-        )
-
-
-def _run_loop(
-    packets: list[FactsPacket],
-    sections: list[PlayerSection],
-    history: list[Rewrite],
-    writer_model: str,
-    auditor_model: str,
-) -> Result:
-    """The audit/rewrite rounds. Split out so run() can wrap the whole thing in one
-    quota guard without burying the loop in a try block."""
-    changed: set[int] | None = None
-
-    for rnd in range(1, BUDGET + 1):
-        bad = _flagged(packets, sections, auditor_model, only=changed)
-        if not bad:
-            return Result(tuple(sections), tuple(history))
-
-        replacements = rewrite([(p, s, why) for _, p, s, _, why in bad], writer_model)
-        changed = set()
-        swaps: dict[int, dict[str, str]] = {}
-        for (i, _, sentence, verdict, why), new in zip(bad, replacements):
-            swaps.setdefault(i, {})[sentence] = new
-            changed.add(i)
-            history.append(Rewrite(
-                player=sections[i].player, round=rnd, original=sentence,
-                verdict=verdict, reason=why, replacement=new,
-                outcome="replaced" if new else "dropped",
-            ))
-        for i, swap in swaps.items():
-            sections[i] = _apply(sections[i], swap)
-
-    # Budget spent. Whatever the last round produced is judged once more, and anything
-    # still unfaithful is cut - shipping it is the single outcome this loop exists to
-    # prevent, and a second chance already came and went.
-    for i, _, sentence, verdict, why in _flagged(
-        packets, sections, auditor_model, only=changed
-    ):
-        sections[i] = _apply(sections[i], {sentence: ""})
-        history.append(Rewrite(
-            player=sections[i].player, round=BUDGET + 1, original=sentence,
-            verdict=verdict, reason=why, replacement="", outcome="deleted",
-        ))
-    return Result(tuple(sections), tuple(history))

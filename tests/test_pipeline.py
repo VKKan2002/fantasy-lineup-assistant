@@ -1,17 +1,14 @@
-"""Tests for the rewrite loop. The model calls are faked; the loop's decisions are not.
+"""Tests for the loop's building blocks and the lineup decision. No model anywhere.
 
-What matters here is termination and what survives: that a clean pass costs nothing, that
-a sentence which never comes clean is cut rather than shipped, and that the budget is
-actually a bound.
+The loop itself is tested in test_graph.py. PACKET, _section and _verdicts live here
+because both files use them.
 """
 
 from pathlib import Path
 
-import ffeval.pipeline as pipeline
-from ffeval.audit.auditor import QuotaExhausted
 from ffeval.audit.packet import Fact, FactsPacket
 from ffeval.audit.verdicts import AuditResult, ClaimVerdict, Verdict
-from ffeval.pipeline import BUDGET, _apply, decide_starters, run
+from ffeval.pipeline import _apply, decide_starters
 from ffeval.writer import PlayerSection
 
 PACKET = FactsPacket.load(Path("eval/packets/2025_w03_allen.json"))
@@ -27,71 +24,6 @@ def _verdicts(*pairs):
         verdicts=tuple(ClaimVerdict(claim=c, verdict=v, evidence_ids=(), reason="why")
                        for c, v in pairs),
         model="fake", prompt_version=1)
-
-
-def _fake(monkeypatch, sections, audits, replacements):
-    """Wire up fake write/audit/rewrite and count the calls each one gets."""
-    calls = {"audit": 0, "rewrite": 0}
-
-    def fake_audit(items, model):
-        """One call for the whole roster now, so one result per packet comes back."""
-        calls["audit"] += 1
-        return [audits.pop(0) for _ in items]
-
-    def fake_rewrite(items, model=None):
-        calls["rewrite"] += 1
-        return [replacements.pop(0) for _ in items]
-
-    monkeypatch.setattr(pipeline, "write", lambda p, s, m: list(sections))
-    monkeypatch.setattr(pipeline, "audit_roster", fake_audit)
-    monkeypatch.setattr(pipeline, "rewrite", fake_rewrite)
-    return calls
-
-
-def test_a_clean_pass_never_calls_the_writer_back(monkeypatch):
-    """Nothing flagged means no rewrite call at all - the loop costs one audit."""
-    calls = _fake(monkeypatch,
-                  [_section("He is a strong play.")],
-                  [_verdicts(("He is a strong play.", Verdict.SUPPORTED))],
-                  [])
-    out = run([PACKET], {"Josh Allen"})
-    assert calls["rewrite"] == 0
-    assert out.sections[0].prose == ("He is a strong play.",)
-    assert out.rewrites == ()
-
-
-def test_a_sentence_that_never_comes_clean_is_cut_not_shipped(monkeypatch):
-    """Rejected every time. After BUDGET rounds it is deleted, and the log says so.
-
-    Shipping an unsupported claim is the one outcome this loop exists to prevent, so a
-    sentence that outlasts its budget must not survive it.
-    """
-    bad = "He is a focal point of the offense."
-    calls = _fake(
-        monkeypatch,
-        [_section(bad)],
-        [_verdicts((bad, Verdict.NOT_IN_PACKET))] * (BUDGET + 1),
-        [bad] * BUDGET,                       # writer keeps handing back the same thing
-    )
-    out = run([PACKET], {"Josh Allen"})
-
-    assert out.sections[0].prose == ()                    # cut
-    assert calls["rewrite"] == BUDGET                     # budget is a real bound
-    assert out.rewrites[-1].outcome == "deleted"
-    assert [r.outcome for r in out.rewrites] == ["replaced"] * BUDGET + ["deleted"]
-
-
-def test_an_empty_replacement_drops_the_sentence(monkeypatch):
-    """The writer is allowed to say there is nothing supportable to write. That beats
-    an invented replacement, so "" removes the sentence instead of blanking it."""
-    bad = "He is a focal point of the offense."
-    _fake(monkeypatch, [_section(bad, "Good matchup.")],
-          [_verdicts((bad, Verdict.NOT_IN_PACKET), ("Good matchup.", Verdict.SUPPORTED)),
-           _verdicts(("Good matchup.", Verdict.SUPPORTED))],
-          [""])
-    out = run([PACKET], {"Josh Allen"})
-    assert out.sections[0].prose == ("Good matchup.",)
-    assert out.cut[0].outcome == "dropped"
 
 
 def test_apply_swaps_and_removes():
@@ -180,35 +112,3 @@ def test_questionable_does_not_block_a_start():
         news=(), player_id="q")
     starters, _ = decide_starters([q], {"q": 20.0}, {})
     assert "q" in starters
-
-
-# ------------------------------------------------- running out of the day's allowance
-
-def test_quota_exhaustion_ships_the_lineup_without_the_commentary(monkeypatch):
-    """The free tier is 20 requests a day per model. The lineup, the injury filter and
-    every printed figure need no model at all, so that half still goes out."""
-    def boom(*a, **k):
-        raise QuotaExhausted("429 RESOURCE_EXHAUSTED, limit 20/day")
-
-    monkeypatch.setattr(pipeline, "write", boom)
-    out = run([PACKET], {"Josh Allen"})
-
-    assert out.sections[0].prose == ()
-    assert out.sections[0].templated                  # the figures survive
-    assert "quota" in out.fallback_reason
-
-
-def test_prose_written_but_never_audited_is_not_shipped(monkeypatch):
-    """The writer succeeded and the auditor did not. An unchecked claim is the single
-    thing this pipeline exists to stop, so the sentences move to `dropped` - kept for
-    inspection, kept out of the output."""
-    def boom(*a, **k):
-        raise QuotaExhausted("429 RESOURCE_EXHAUSTED")
-
-    monkeypatch.setattr(pipeline, "write", lambda p, s, m: [_section("Unchecked claim.")])
-    monkeypatch.setattr(pipeline, "audit_roster", boom)
-    out = run([PACKET], {"Josh Allen"})
-
-    assert out.sections[0].prose == ()
-    assert "Unchecked claim." in out.sections[0].dropped
-    assert out.fallback_reason
