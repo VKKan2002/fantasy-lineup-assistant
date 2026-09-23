@@ -261,3 +261,31 @@ def test_the_packet_tag_never_escapes_into_a_citation():
            '{"n":2,"verdict":"not_a_claim","evidence_ids":[],"reason":"b"}]')
     v = parse_response(raw, CLAIMS)
     assert v[0].evidence_ids == ("matchup.spread_line",)
+
+
+def test_groq_rosters_are_chunked_and_come_back_in_order(monkeypatch):
+    """Groq refuses any request over 8,000 tokens, so a big roster goes out in pieces.
+    Each piece restarts at p1, and the results still have to line up with the roster."""
+    import json
+
+    import ffeval.audit.auditor as auditor
+
+    prompts = []
+
+    def fake(prompt, model):
+        prompts.append(prompt)
+        n = int(prompt.split("SENTENCES TO JUDGE (")[1].split(")")[0])
+        return json.dumps([{"n": i, "verdict": "supported", "evidence_ids": [],
+                            "reason": "r"} for i in range(1, n + 1)])
+
+    monkeypatch.setattr(auditor, "call_model", fake)
+    roster = [(PACKET, [f"sentence {i}."]) for i in range(8)]
+    out = auditor.audit_roster(roster, "groq/x")
+
+    assert len(prompts) > 1                                        # it was split
+    assert all(len(p) <= auditor._GROQ_PROMPT_CHARS for p in prompts)
+    assert [r.verdicts[0].claim for r in out] == [f"sentence {i}." for i in range(8)]
+
+    prompts.clear()
+    auditor.audit_roster(roster, "gemini-x")
+    assert len(prompts) == 1                                       # Gemini: one call a roster

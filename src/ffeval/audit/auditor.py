@@ -293,9 +293,11 @@ def call_model(prompt: str, model: str, cache_dir: Path | str = CACHE_DIR) -> st
     from google.genai import types
 
     load_dotenv()
-    client = genai.Client()                 # reads GEMINI_API_KEY
-    resp = _generate(client, types, model, prompt)
-    text = resp.text or ""
+    if model.startswith("groq/"):
+        text = _generate_groq(model.removeprefix("groq/"), prompt)
+    else:
+        client = genai.Client()             # reads GEMINI_API_KEY
+        text = _generate(client, types, model, prompt).text or ""
     cache.mkdir(parents=True, exist_ok=True)
     hit.write_text(text)
     return text
@@ -331,6 +333,39 @@ def _generate(client, types, model: str, prompt: str):
         if getattr(e, "code", None) == 429:
             raise QuotaExhausted(str(e)[:300]) from e
         raise
+
+
+def _generate_groq(model: str, prompt: str) -> str:
+    """Groq speaks the OpenAI wire format, so the openai package is the client.
+
+    Its default retries (2, with backoff) already cover 429s and 5xx. A 429 that outlives
+    them is treated exactly like Gemini's: the allowance is gone, take the fallback route.
+    """
+    import os
+
+    import openai
+
+    # max_retries=5: chunks go out back to back, so the next one usually lands in a
+    # minute the last one already spent. Groq's 429 says how long to wait and the SDK
+    # waits it (up to 60s). A 429 that outlives five waits is a daily limit, not a minute.
+    client = openai.OpenAI(base_url="https://api.groq.com/openai/v1",
+                           api_key=os.environ["GROQ_API_KEY"], max_retries=5)
+    try:
+        resp = client.chat.completions.create(
+            model=model, temperature=0,
+            # ponytail: fixed ceiling. gpt-oss "thinks" before answering and the thinking
+            # counts against this; ~3K was enough once and too little the next time.
+            # Raise it if finish_reason=length comes back again.
+            max_completion_tokens=16384,
+            messages=[{"role": "user", "content": prompt}])
+    except openai.RateLimitError as e:
+        raise QuotaExhausted(str(e)[:300]) from e
+    # Measured: one reply came back cut off at claim 24 of 30. call_model caches whatever
+    # returns, so a cut-off reply would be replayed forever. Refuse it before it is stored.
+    choice = resp.choices[0]
+    if choice.finish_reason != "stop":
+        raise RuntimeError(f"groq reply unfinished: finish_reason={choice.finish_reason}")
+    return choice.message.content or ""
 
 
 _PACKET_TAG = re.compile(r"^p\d+/")
@@ -386,10 +421,44 @@ def parse_response(raw: str, claims: list[str]) -> tuple[ClaimVerdict, ...]:
     return tuple(out)
 
 
+# ponytail: characters, not tokens (~3.6 chars per token, measured on the eval prompt).
+# Groq's free tier caps a MINUTE at 8,000 tokens and refuses any single request bigger
+# than that; a 12-player roster asked for 13,296. 12,000 chars is about 3 players.
+# Count real tokens if a chunk is ever refused again.
+_GROQ_PROMPT_CHARS = 12_000
+
+
+def _chunks(items: list, limit: int):
+    """Pack players into prompts under `limit` characters, in order. A lone player who is
+    over the limit on his own still goes, alone - there is nothing smaller to send."""
+    chunk: list = []
+    for it in items:
+        if chunk and len(build_prompt(chunk + [it])) > limit:
+            yield chunk
+            chunk = []
+        chunk.append(it)
+    if chunk:
+        yield chunk
+
+
 def audit_roster(
     items: list[tuple[FactsPacket, list[str]]], model: str
 ) -> list[AuditResult]:
-    """Judge a whole roster in ONE call. Returns one result per packet, in order."""
+    """Judge a whole roster. Returns one result per packet, in order.
+
+    One call on Gemini, whose limit is 20 requests a DAY. Several on Groq, whose limit is
+    8,000 tokens a MINUTE - the two free tiers ration opposite things, so "one call per
+    roster" is Gemini's rule, not a universal one.
+    """
+    if not model.startswith("groq/"):
+        return _audit_call(items, model)
+    return [r for c in _chunks(items, _GROQ_PROMPT_CHARS) for r in _audit_call(c, model)]
+
+
+def _audit_call(
+    items: list[tuple[FactsPacket, list[str]]], model: str
+) -> list[AuditResult]:
+    """One model call for these packets."""
     flat = [c for _, claims in items for c in claims]
     if not flat:
         return [AuditResult((), model, PROMPT_VERSION) for _ in items]

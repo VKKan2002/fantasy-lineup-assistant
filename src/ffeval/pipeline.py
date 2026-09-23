@@ -32,7 +32,7 @@ from .scoring.league import League
 from .scoring.lineup import best_lineup
 from .writer import PlayerSection
 
-AUDITOR_MODEL = "gemini-3.6-flash"   # not the writer's. See docs/DESIGN.md.
+AUDITOR_MODEL = "groq/openai/gpt-oss-120b"   # not the writer's. See docs/DESIGN.md.
 BUDGET = 2                           # rewrite rounds before a sentence is cut
 
 

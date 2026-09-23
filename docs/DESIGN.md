@@ -56,6 +56,14 @@ the measured recall still stands — but that also means the eval set cannot det
 cross-player citation, which is the exact risk batching introduces. Unmeasurable until there
 are more packets.
 
+**"One call per roster" is Gemini's rule, not a universal one.** The auditor moved to Groq
+(`groq/openai/gpt-oss-120b`) after `gemini-3.6-flash` answered 503 "high demand" on every
+attempt in a day. Groq's free tier rations the opposite thing: ~1,000 requests a day, but
+8,000 tokens a *minute*, and it refuses any single request bigger than that. A 12-player
+roster asked for 13,296 and was refused. So on Groq the roster is packed into prompts under
+12,000 characters (about three players each) and the `openai` SDK waits out the per-minute
+429s between them. Measured live: 12 players, one full write-audit-rewrite run, 1m52s.
+
 **Running out of quota is a first-class outcome, not a crash.** The lineup, the injury
 filter, the projection and every printed figure need no model at all, so when the allowance
 is gone that half still goes out and the commentary does not. Prose that was written but
@@ -601,7 +609,7 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **54 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
+| Test suite | **55 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
@@ -628,7 +636,12 @@ numbers, and be able to say "absent" rather than "wrong."**
 
 ### What the LLM auditor measured
 
-**Re-measure owed.** This 93% was produced under `PROMPT_VERSION` 1. The prompt is now
+**Re-measured under `PROMPT_VERSION` 2, on Groq's `gpt-oss-120b`: 87% recall, 0% false
+alarms, 0 fabricated citations.** Two misses: the 34% pressure-rate sentence (which the
+numeric-source gate refuses one layer later anyway) and a speculative line about a
+teammate's absence. The Gemini figure below is kept for history.
+
+This 93% was produced under `PROMPT_VERSION` 1. The prompt is now
 version 2 — one call per roster, evidence ids namespaced — so the figure below describes a
 prompt that is no longer what ships. Re-running costs one call, and is owed before the number
 is quoted anywhere again.

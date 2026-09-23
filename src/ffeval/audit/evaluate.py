@@ -229,7 +229,7 @@ def main() -> None:
     for k, v in fabricated.items():
         print(f"  {k}: {v}")
 
-    name = f"results_{args.model}.json" if args.model else "baseline_results.json"
+    name = f"results_{args.model.replace('/', '_')}.json" if args.model else "baseline_results.json"
     (out / name).write_text(json.dumps(rows, indent=2) + "\n")
     print(f"\nwrote {out / name}")
 

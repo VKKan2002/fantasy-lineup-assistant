@@ -17,6 +17,7 @@ dependencies = [
     # Reads the gitignored .env so the key never has to be exported by hand.
     "python-dotenv>=1.0",
     "langgraph>=1.2.12",
+    "openai>=3.19.1",
 ]
 
 # uv installs this group on a plain `uv sync`, unlike optional-dependencies,
