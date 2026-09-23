@@ -1,0 +1,204 @@
+{
+ "feed": [
+  {
+   "id": 40699880,
+   "type": "Story",
+   "published": "2026-09-23T18:01:27Z",
+   "headline": "Fantasy football buzz: The best reliable, under-the-radar QB options for Week 3",
+   "description": "With injury questions surrounding several QBs in the league, let's take a look at some underrated QBs.",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/40699880"
+     }
+    },
+    "app": {
+     "sportscenter": {
+      "href": "sportscenter://x-callback-url/showStory?uid=40699880"
+     }
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=40699880"
+    },
+    "web": {
+     "href": "https://www.espn.com/fantasy/football/story/_/id/40699880/fantasy-football-injuries-position-battles-nfl-news-analysis"
+    }
+   }
+  },
+  {
+   "id": 50005892,
+   "type": "Story",
+   "published": "2026-09-22T19:59:54Z",
+   "headline": "Knockout league pickups: Nacua and Bowers among big names available in Week 3",
+   "description": "Tristan H. Cockcroft lists the most common players on eliminated teams and finds how much FAB to spend this week.",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50005892"
+     }
+    },
+    "app": {
+     "sportscenter": {
+      "href": "sportscenter://x-callback-url/showStory?uid=50005892"
+     }
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=50005892"
+    },
+    "web": {
+     "href": "https://www.espn.com/fantasy/football/story/_/id/50005892/espn-nfl-fantasy-football-knockout-league-picks-week-3-strategy-adds"
+    }
+   }
+  },
+  {
+   "id": 63862428,
+   "type": "Rotowire",
+   "published": "2026-09-22T15:38:41Z",
+   "headline": "Rams head coach Sean McVay acknowledged Tuesday that he's uncertain if Nacua (groin) will be available for Sunday's game against the Broncos, Gary Klein of the Los Angeles Times reports. \"I'm not sure what his status is as far as this next coming week,\" McVay said of Nacua. \"I'm hopeful that he'll play.... If he's ready to go, great. If not, then we'll continue to roll.\"",
+   "description": "Rams head coach Sean McVay acknowledged Tuesday that he's uncertain if Nacua (groin) will be available for Sunday's game against the Broncos, Gary Klein of the Los Angeles Times reports. \"I'm not sure what his status is as far as this next coming week,\" McVay said of Nacua. \"I'm hopeful that he'll play.... If he's ready to go, great. If not, then we'll continue to roll.\"",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63862428"
+    }
+   }
+  },
+  {
+   "id": 63849528,
+   "type": "Rotowire",
+   "published": "2026-09-21T22:50:25Z",
+   "headline": "Nacua (hip) is listed as inactive Monday against the Giants, Adam Schefter of ESPN reports.",
+   "description": "Nacua (hip) is listed as inactive Monday against the Giants, Adam Schefter of ESPN reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63849528"
+    }
+   }
+  },
+  {
+   "id": 63812328,
+   "type": "Rotowire",
+   "published": "2026-09-20T16:07:44Z",
+   "headline": "Nacua (hip), who is officially listed as questionable for Monday's game against the Giants, \"is trending the wrong way\" in advance of the Week 2 contest, Adam Schefter of ESPN reports.",
+   "description": "Nacua (hip), who is officially listed as questionable for Monday's game against the Giants, \"is trending the wrong way\" in advance of the Week 2 contest, Adam Schefter of ESPN reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63812328"
+    }
+   }
+  },
+  {
+   "id": 63808128,
+   "type": "Rotowire",
+   "published": "2026-09-20T10:50:06Z",
+   "headline": "Nacua (hip) is considered by the Rams \"to be a pre-game decision\" for Monday's game against the Giants, Adam Schefter of ESPN reports.",
+   "description": "Nacua (hip) is considered by the Rams \"to be a pre-game decision\" for Monday's game against the Giants, Adam Schefter of ESPN reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63808128"
+    }
+   }
+  },
+  {
+   "id": 63804628,
+   "type": "Rotowire",
+   "published": "2026-09-19T18:41:29Z",
+   "headline": "Coach Sean McVay said Nacua (hip) won't practice Saturday and will be listed as questionable for Monday's game against the Giants, Benjamin Royer of The Orange County Register reports.",
+   "description": "Coach Sean McVay said Nacua (hip) won't practice Saturday and will be listed as questionable for Monday's game against the Giants, Benjamin Royer of The Orange County Register reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63804628"
+    }
+   }
+  },
+  {
+   "id": 63792328,
+   "type": "Rotowire",
+   "published": "2026-09-18T22:21:17Z",
+   "headline": "Nacua didn't practice Friday due to a hip injury, Benjamin Royer of The Orange County Register reports.",
+   "description": "Nacua didn't practice Friday due to a hip injury, Benjamin Royer of The Orange County Register reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63792328"
+    }
+   }
+  },
+  {
+   "id": 63790728,
+   "type": "Rotowire",
+   "published": "2026-09-18T21:11:53Z",
+   "headline": "Nacua didn't take part in the media-access portion of Friday's practice, Benjamin Royer of The Orange County Register reports.",
+   "description": "Nacua didn't take part in the media-access portion of Friday's practice, Benjamin Royer of The Orange County Register reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63790728"
+    }
+   }
+  },
+  {
+   "id": 63680528,
+   "type": "Rotowire",
+   "published": "2026-09-11T04:01:21Z",
+   "headline": "Nacua brought in five of nine targets for 74 yards during the Rams' 27-7 Week 1 loss to the 49ers in Melbourne, Australia.",
+   "description": "Nacua brought in five of nine targets for 74 yards during the Rams' 27-7 Week 1 loss to the 49ers in Melbourne, Australia.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63680528"
+    }
+   }
+  },
+  {
+   "id": 63641828,
+   "type": "Rotowire",
+   "published": "2026-09-08T23:32:06Z",
+   "headline": "Nacua (core) was not listed on the injury report the Rams released Tuesday, according to Sarah Barshop of ESPN.com.",
+   "description": "Nacua (core) was not listed on the injury report the Rams released Tuesday, according to Sarah Barshop of ESPN.com.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63641828"
+    }
+   }
+  },
+  {
+   "id": 63631428,
+   "type": "Rotowire",
+   "published": "2026-09-06T21:02:35Z",
+   "headline": "Rams head coach Sean McVay said Sunday that Nacua (core) is expected to play Thursday against the 49ers in Melbourne, Australia, Nate Atkins of The Athletic reports.",
+   "description": "Rams head coach Sean McVay said Sunday that Nacua (core) is expected to play Thursday against the 49ers in Melbourne, Australia, Nate Atkins of The Athletic reports.",
+   "links": {
+    "api": {
+     "self": {}
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=63631428"
+    }
+   }
+  }
+ ]
+}

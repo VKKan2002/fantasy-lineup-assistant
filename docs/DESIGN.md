@@ -142,7 +142,7 @@ cannot catch a wrong number upstream.
 | Orchestration | LangGraph | Real branching on injury status, with failure paths |
 | Writer model | `gemini-3.1-flash-lite` | Reliable and fast where Gemma was neither; see below |
 | Auditor model | A different hosted model | A writer shouldn't grade itself |
-| News | Fetch known sources, search the tail | Documents live five days; nothing to index |
+| News | ESPN player notes for everyone; an agent over ESPN + nflverse for open questions | Documents live five days; nothing to index |
 | Email | Resend | Hosts the unsubscribe page, so nothing of ours needs to run |
 | Schedule | GitHub Actions cron | No server, no idle cost |
 
@@ -405,6 +405,26 @@ someone thought to write; one copy can't disagree with anything. The graph kept 
 because the loop is a cycle with a budget and an exit condition, and the quota fallback is a
 visible edge rather than an `except` buried in a function.
 
+**The news agent gathers evidence and never writes it.** Every player gets ESPN's newest
+three notes by a plain fetch, matched by ESPN id. An agent (LangGraph, `gpt-oss-120b` on
+Groq, four tools: ESPN player news, ESPN team news, nflverse practice report, nflverse depth
+chart, at most four calls) runs only when "will he play?" is still open. It hands back the
+ids of items its tools returned; the packet gets those originals with links and dates, and
+any id it invents is dropped. A summary written by the agent would put model text in the
+evidence the auditor checks against.
+
+Two things the first live run found, neither of which a test could have:
+
+- **The trigger waited for a label that did not exist yet.** Official Questionable/Doubtful
+  statuses appear on Friday. On a Wednesday, with the coach calling Nacua "uncertain", the
+  agent never ran. It now also starts on anything short of full practice, or an injury in
+  the newest note (ESPN writes the body part in brackets: "Nacua (groin)").
+- **The agent called a depth chart an answer.** It saw "WR1 Puka Nacua" and reported the
+  question answered, with the coach's "uncertain" in front of it. "Answered" now has a
+  strict meaning in the prompt: a note from the last three days that says whether he plays.
+  Rerun twice live, it said "could not confirm" and cited the coach both times. Two runs is
+  a spot check, not a measurement.
+
 **"I couldn't find anything" is a valid, visible answer,** and there is always a plain
 statistical fallback, so the tool still works when the clever parts are down.
 
@@ -609,14 +629,14 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **55 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
+| Test suite | **62 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
 | Rewrite loop ([graph.py](../src/ffeval/graph.py), LangGraph) | **done — 1 of 6 sentences was unfaithful; the loop cut it** |
 | Projection rule + lineup decision | **done — port verified, backtest still prints 1,631 points** |
 | Batched auditor + quota fallback | **built, UNTESTED live — the 20/day cap went first** |
-| News search and the digging loop | not started |
+| News fetch + digging agent ([ingest/news.py](../src/ffeval/ingest/news.py)) | **done — live on 2026 week 3; see the rule below** |
 | ESPN roster fetch | not started |
 | Email, change-gating, cron | not started |
 

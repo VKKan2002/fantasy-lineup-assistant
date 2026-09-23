@@ -1,0 +1,162 @@
+{
+ "articles": [
+  {
+   "id": 49998629,
+   "type": "Story",
+   "published": "2026-09-23T15:08:14Z",
+   "headline": "Evaluating surprise early-season trends for 32 NFL teams",
+   "description": "T.J. Watt is dominant again? The Packers can't run the ball? Drew Lock is fourth in QBR? Let's figure out which early stats and trends have staying power and which are a mirage.",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49998629"
+     }
+    },
+    "app": {
+     "sportscenter": {
+      "href": "sportscenter://x-callback-url/showStory?uid=49998629"
+     }
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/nfl/story?storyId=49998629"
+    },
+    "web": {
+     "href": "https://www.espn.com/nfl/story/_/id/49998629/evaluating-32-nfl-team-surprise-trends-2026-first-two-weeks-real-mirage"
+    }
+   }
+  },
+  {
+   "id": 47809892,
+   "type": "Story",
+   "published": "2026-09-22T18:33:41Z",
+   "headline": "Super Bowl LXI odds: All 32 teams' odds to win the championship",
+   "description": "Every NFL team's win total, as well as odds to win their division, the conference and Super Bowl LXI.",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/47809892"
+     }
+    },
+    "app": {
+     "sportscenter": {
+      "href": "sportscenter://x-callback-url/showStory?uid=47809892"
+     }
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/wireless/story?storyId=47809892"
+    },
+    "web": {
+     "href": "https://www.espn.com/espn/betting/story/_/id/47809892/2026-super-bowl-lxi-odds-nfl-sports-betting-season-win-totals-playoffs"
+    }
+   }
+  },
+  {
+   "id": 50006463,
+   "type": "Media",
+   "published": "2026-09-22T16:54:36Z",
+   "headline": "McVay unsure about Nacua's availability for Week 3",
+   "description": "McVay unsure about Nacua's availability for Week 3",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/ebf91091-841c-4a2a-9fe3-8178006ac870"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/50006463"
+     }
+    },
+    "sportscenter": {
+     "href": "sportscenter://x-callback-url/showVideo?videoID=50006463&videoDSI=6b0fa47d43807"
+    },
+    "web": {
+     "href": "https://www.espn.com/video/clip/_/id/50006463/mcvay-unsure-nacua-availability-week-3",
+     "self": {
+      "href": "https://www.espn.com/video/clip/_/id/50006463/mcvay-unsure-nacua-availability-week-3",
+      "dsi": {
+       "href": "https://www.espn.com/video/clip?id=6b0fa47d43807"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 50006299,
+   "type": "HeadlineNews",
+   "published": "2026-09-23T10:40:59Z",
+   "headline": "Rams' McVay unsure about Nacua's status for Week 3 vs. Broncos",
+   "description": "Sean McVay said he doesn't know wide receiver Puka Nacua's game status for Week 3 against the Broncos, but the Rams' head coach said he's hopeful Nacua will play.",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/50006299"
+     }
+    },
+    "app": {
+     "sportscenter": {
+      "href": "sportscenter://x-callback-url/showStory?uid=50006299"
+     }
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/nfl/story?storyId=50006299"
+    },
+    "web": {
+     "href": "https://www.espn.com/nfl/story/_/id/50006299/rams-mcvay-unsure-nacua-status-week-3-vs-broncos"
+    }
+   }
+  },
+  {
+   "id": 50006166,
+   "type": "Media",
+   "published": "2026-09-22T15:47:19Z",
+   "headline": "Aaron Donald returns after 981 days",
+   "description": "Sarah Barshop reacts to Aaron Donald's first game back with the Rams since coming out of retirement.",
+   "links": {
+    "api": {
+     "artwork": {
+      "href": "https://artwork.api.espn.com/artwork/collections/media/3fbdf80a-433d-496f-b692-3babd7cbd1b8"
+     },
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/video/clips/50006166"
+     }
+    },
+    "sportscenter": {
+     "href": "sportscenter://x-callback-url/showVideo?videoID=50006166&videoDSI=26a0a3ccc620d"
+    },
+    "web": {
+     "href": "https://www.espn.com/video/clip/_/id/50006166/aaron-donald-returns-981-days",
+     "self": {
+      "href": "https://www.espn.com/video/clip/_/id/50006166/aaron-donald-returns-981-days",
+      "dsi": {
+       "href": "https://www.espn.com/video/clip?id=26a0a3ccc620d"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 49545945,
+   "type": "Story",
+   "published": "2026-09-22T15:32:23Z",
+   "headline": "How active NFL players continue to redefine all-time sack list",
+   "description": "Myles Garrett's torrid pace up the all-time sack list paces seven active players making their moves among the greats.",
+   "links": {
+    "api": {
+     "self": {
+      "href": "https://content.core.api.espn.com/v1/sports/news/49545945"
+     }
+    },
+    "app": {
+     "sportscenter": {
+      "href": "sportscenter://x-callback-url/showStory?uid=49545945"
+     }
+    },
+    "mobile": {
+     "href": "http://m.espn.go.com/nfl/story?storyId=49545945"
+    },
+    "web": {
+     "href": "https://www.espn.com/nfl/story/_/id/49545945/all-sack-list-tracker-myles-garrett-von-miller-aaron-donald"
+    }
+   }
+  }
+ ]
+}

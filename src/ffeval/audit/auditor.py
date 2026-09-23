@@ -335,21 +335,29 @@ def _generate(client, types, model: str, prompt: str):
         raise
 
 
-def _generate_groq(model: str, prompt: str) -> str:
+def groq_client():
     """Groq speaks the OpenAI wire format, so the openai package is the client.
 
-    Its default retries (2, with backoff) already cover 429s and 5xx. A 429 that outlives
-    them is treated exactly like Gemini's: the allowance is gone, take the fallback route.
+    max_retries=5: requests go out back to back, so the next one usually lands in a
+    minute the last one already spent. Groq's 429 says how long to wait and the SDK
+    waits it (up to 60s). A 429 that outlives five waits is a daily limit, not a minute.
     """
     import os
 
     import openai
+    from dotenv import load_dotenv
 
-    # max_retries=5: chunks go out back to back, so the next one usually lands in a
-    # minute the last one already spent. Groq's 429 says how long to wait and the SDK
-    # waits it (up to 60s). A 429 that outlives five waits is a daily limit, not a minute.
-    client = openai.OpenAI(base_url="https://api.groq.com/openai/v1",
-                           api_key=os.environ["GROQ_API_KEY"], max_retries=5)
+    load_dotenv()
+    return openai.OpenAI(base_url="https://api.groq.com/openai/v1",
+                         api_key=os.environ["GROQ_API_KEY"], max_retries=5)
+
+
+def _generate_groq(model: str, prompt: str) -> str:
+    """A 429 that outlives the client's retries is treated exactly like Gemini's: the
+    allowance is gone, take the fallback route."""
+    import openai
+
+    client = groq_client()
     try:
         resp = client.chat.completions.create(
             model=model, temperature=0,
