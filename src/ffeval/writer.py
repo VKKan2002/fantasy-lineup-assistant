@@ -106,6 +106,10 @@ def _line(fact: Fact) -> str:
     value = fact.value
     if isinstance(value, bool):
         value = "yes" if value else "no"
+    elif isinstance(value, float):
+        value = round(value, 2)             # 17.700000000000003 is float noise, not data
+    elif value is None:
+        value = "not listed"                # nflverse fills a roof in later in the week
     return f"{label}: {value}"
 
 

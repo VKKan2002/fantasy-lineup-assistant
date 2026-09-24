@@ -59,9 +59,9 @@ ESPN_TEAM = {
 }
 
 
-def _get(url: str) -> dict:
+def _get(url: str, headers: dict | None = None) -> dict:
     """The one door to the network. Tests replace this and replay recorded replies."""
-    req = urllib.request.Request(url, headers={"User-Agent": "ffeval"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ffeval", **(headers or {})})
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.load(r)
 
@@ -120,7 +120,11 @@ def add_news(packets: list[FactsPacket], now: datetime | None = None,
     espn = espn_ids([p.player_id for p in packets])
     out = []
     for p in packets:
-        eid = espn.get(p.player_id)
+        if p.position == "D/ST":            # a team, not a player: no player notes (17a)
+            out.append(p)
+            continue
+        eid = espn.get(p.player_id) or (
+            int(p.player_id[5:]) if p.player_id.startswith("espn:") else None)
         items = player_notes(eid, now) if eid else None
         if items is None:
             p = replace(p, facts=p.facts + (Fact(
@@ -131,7 +135,7 @@ def add_news(packets: list[FactsPacket], now: datetime | None = None,
                 as_of=now.isoformat(timespec="minutes")),))
         else:
             p = replace(p, news=p.news + tuple(items))
-        if eid and _open_question(p):
+        if eid and p.position != "K" and _open_question(p):     # never for K/DST (17a)
             p = dig(p, eid, now, model)
         out.append(p)
     return out

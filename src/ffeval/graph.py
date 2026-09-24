@@ -9,10 +9,12 @@ and a graph makes obvious. Everything upstream of it (packets, projection, best_
 is a straight line and stays a straight line - see docs/DESIGN.md, "a workflow, not an
 agent". The helpers the nodes call (_flagged, _apply, Rewrite) stay in pipeline.py.
 
-Running out of quota is a route, not an exception. Every model-calling node is wrapped so
-a QuotaExhausted lands in `fallback_reason`, and the next edge sends the run to the
-fallback node rather than up the stack. Prose written but never audited is dropped there,
-because an unchecked claim is the one thing this pipeline exists to stop.
+A failed model call is a route, not an exception. Every model-calling node is wrapped so
+any failure - quota gone, a 503 "high demand", a 413 "too large", a reply that is not JSON
+- lands in `fallback_reason`, and the next edge sends the run to the fallback node rather
+than up the stack. The run is unattended on a Sunday: a crash means no email and no clue.
+Prose written but never audited is dropped there, because an unchecked claim is the one
+thing this pipeline exists to stop.
 """
 
 from __future__ import annotations
@@ -51,9 +53,13 @@ class State(TypedDict, total=False):
 
 
 def _guard(fn: Callable[[State], dict]) -> Callable[[State], dict]:
-    """Turn a model node's quota failure into state instead of a stack trace.
+    """Turn a model node's failure into state instead of a stack trace.
 
-    Also makes a node a no-op once the quota is gone, so a route that has already been
+    Deliberately broad. On one day the run died on two 503s and a 413, none of them
+    quota; each would have cost the whole email. The reason is recorded and printed, so a
+    real bug still shows up - as a figures-only email that says why, not as silence.
+
+    Also makes a node a no-op once a failure is recorded, so a route that has already been
     decided cannot be undone by a later node spending a request it does not have.
     """
     def node(state: State) -> dict:
@@ -64,6 +70,9 @@ def _guard(fn: Callable[[State], dict]) -> Callable[[State], dict]:
         except QuotaExhausted as e:
             return {"fallback_reason":
                     f"daily model quota exhausted; lineup and figures only - {e}"}
+        except Exception as e:
+            return {"fallback_reason": f"model call failed ({type(e).__name__}); "
+                                       f"lineup and figures only - {str(e)[:200]}"}
     return node
 
 
@@ -128,7 +137,7 @@ def cut(state: State) -> dict:
 
 
 def fallback(state: State) -> dict:
-    """The quota ran out. Ship the half that never needed a model.
+    """A model call failed. Ship the half that never needed a model.
 
     Prose that was written but never audited moves to `dropped`. "No notes today" is a
     better email than an unverified one.

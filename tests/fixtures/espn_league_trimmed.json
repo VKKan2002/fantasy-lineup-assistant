@@ -1,0 +1,207 @@
+{
+ "teams": [
+  {
+   "id": 1,
+   "roster": {
+    "entries": [
+     {
+      "lineupSlotId": 4,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4241389,
+        "fullName": "CeeDee Lamb",
+        "defaultPositionId": 3,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 2,
+      "playerPoolEntry": {
+       "player": {
+        "id": 3043078,
+        "fullName": "Derrick Henry",
+        "defaultPositionId": 2,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 21,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4047365,
+        "fullName": "Josh Jacobs",
+        "defaultPositionId": 2,
+        "injuryStatus": "DAY_TO_DAY"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 20,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4429615,
+        "fullName": "Zay Flowers",
+        "defaultPositionId": 3,
+        "injuryStatus": "QUESTIONABLE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 4,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4426388,
+        "fullName": "Jameson Williams",
+        "defaultPositionId": 3,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 0,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4040715,
+        "fullName": "Jalen Hurts",
+        "defaultPositionId": 1,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 23,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4047650,
+        "fullName": "DK Metcalf",
+        "defaultPositionId": 3,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 20,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4432620,
+        "fullName": "Parker Washington",
+        "defaultPositionId": 3,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 6,
+      "playerPoolEntry": {
+       "player": {
+        "id": 15847,
+        "fullName": "Travis Kelce",
+        "defaultPositionId": 4,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 20,
+      "playerPoolEntry": {
+       "player": {
+        "id": 3126486,
+        "fullName": "Deebo Samuel Sr.",
+        "defaultPositionId": 3,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 2,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4429059,
+        "fullName": "Woody Marks",
+        "defaultPositionId": 2,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 16,
+      "playerPoolEntry": {
+       "player": {
+        "id": -16005,
+        "fullName": "Browns D/ST",
+        "defaultPositionId": 16,
+        "injuryStatus": null
+       }
+      }
+     },
+     {
+      "lineupSlotId": 17,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4697745,
+        "fullName": "Tyler Loop",
+        "defaultPositionId": 5,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 20,
+      "playerPoolEntry": {
+       "player": {
+        "id": 3149687,
+        "fullName": "Chris Brooks",
+        "defaultPositionId": 2,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     },
+     {
+      "lineupSlotId": 20,
+      "playerPoolEntry": {
+       "player": {
+        "id": 4832955,
+        "fullName": "Emmett Johnson",
+        "defaultPositionId": 2,
+        "injuryStatus": "ACTIVE"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "settings": {
+  "rosterSettings": {
+   "lineupSlotCounts": {
+    "0": 1,
+    "1": 0,
+    "2": 2,
+    "3": 0,
+    "4": 2,
+    "5": 0,
+    "6": 1,
+    "7": 0,
+    "8": 0,
+    "9": 0,
+    "10": 0,
+    "11": 0,
+    "12": 0,
+    "13": 0,
+    "14": 0,
+    "15": 0,
+    "16": 1,
+    "17": 1,
+    "18": 0,
+    "19": 0,
+    "20": 5,
+    "21": 2,
+    "22": 0,
+    "23": 1,
+    "24": 0
+   }
+  }
+ }
+}

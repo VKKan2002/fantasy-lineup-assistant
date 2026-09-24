@@ -94,3 +94,14 @@ def test_quota_gone_before_writing_still_ships_the_figures(monkeypatch):
     assert "quota" in out["fallback_reason"]
     assert out["sections"][0].prose == ()
     assert out["sections"][0].templated                  # the figures survive
+
+
+def test_any_model_failure_still_ships_the_figures(monkeypatch):
+    """A 503 is not a quota error, and on a Sunday it must not cost the whole email."""
+    _fake(monkeypatch, [_section(GOOD[0])], [], [])
+    monkeypatch.setattr(pipeline, "audit_roster",
+                        lambda i, m: (_ for _ in ()).throw(RuntimeError("503 UNAVAILABLE")))
+    out = _invoke()
+    assert "RuntimeError" in out["fallback_reason"]
+    assert out["sections"][0].prose == ()
+    assert out["sections"][0].templated

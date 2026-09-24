@@ -64,6 +64,8 @@ roster asked for 13,296 and was refused. So on Groq the roster is packed into pr
 12,000 characters (about three players each) and the `openai` SDK waits out the per-minute
 429s between them. Measured live: 12 players, one full write-audit-rewrite run, 1m52s.
 
+**Any failed model call is a first-class outcome, not a crash** — quota, a 503, a 413, a reply that is not JSON. One day produced all three; each would have cost the whole email. The original rule, for quota:
+
 **Running out of quota is a first-class outcome, not a crash.** The lineup, the injury
 filter, the projection and every printed figure need no model at all, so when the allowance
 is gone that half still goes out and the commentary does not. Prose that was written but
@@ -425,6 +427,26 @@ Two things the first live run found, neither of which a test could have:
   Rerun twice live, it said "could not confirm" and cited the coach both times. Two runs is
   a spot check, not a measurement.
 
+**Lineup slots come from the league, and K and D/ST use the same rule.** `best_lineup()` is
+optimal only for the slots it is handed, so they are read from the league's own settings
+rather than assumed. Kickers and defenses, first left out as close to random, are back in:
+this season's points per game shrunk toward last season's, the same rule as everyone. The
+points are ESPN's, already in the league's scoring — the only practical way to score a
+defense, whose points hang on league-specific rules. Live on week 3: Tyler Loop 8.74 against
+ESPN's 8.7; the Browns D/ST 5.85 against ESPN's 5.4. Stated plainly: the 91.2% figure was
+measured on QB/RB/WR/TE, and nothing here measures the rule on K or D/ST. A defense's
+game-total fact points the other way from everyone else's: a shootout is bad for it.
+
+**The 2026 prior is ESPN's projection, because there is no 2026 preseason ADP.** The ADP
+site serves only the latest window for the current season - in week 3, 114 drafts held
+after two games were played. Using it would count weeks 1-2 twice: once in the ADP, once
+as games. So QB/RB/WR/TE shrink toward ESPN's projected season total / 17 instead (the
+league is standard full PPR, and ESPN's points match nflverse's to the decimal, so the two
+mix cleanly). Two costs, stated: it is ESPN's model, not one we can explain; and whether
+ESPN revises that projection in-season is unverified, which would bring back the same
+double count. The 91.2% was measured with the ADP prior, so it does not describe this one.
+A fix for next year is to save the ADP window in August, before it is gone.
+
 **"I couldn't find anything" is a valid, visible answer,** and there is always a plain
 statistical fallback, so the tool still works when the clever parts are down.
 
@@ -629,7 +651,7 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **62 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
+| Test suite | **69 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
@@ -637,7 +659,8 @@ Actions secrets, never in the repo.
 | Projection rule + lineup decision | **done — port verified, backtest still prints 1,631 points** |
 | Batched auditor + quota fallback | **built, UNTESTED live — the 20/day cap went first** |
 | News fetch + digging agent ([ingest/news.py](../src/ffeval/ingest/news.py)) | **done — live on 2026 week 3; see the rule below** |
-| ESPN roster fetch | not started |
+| ESPN roster fetch ([ingest/roster.py](../src/ffeval/ingest/roster.py)) | **done — private league, one request; slots from league settings; K and D/ST included** |
+| Weekly command (`uv run python -m ffeval`) | **done — real team, week 3, 3 minutes end to end** |
 | Email, change-gating, cron | not started |
 
 ### What the deterministic baseline measured
