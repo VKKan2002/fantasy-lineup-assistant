@@ -1,133 +1,166 @@
-# Fantasy Football Lineup Assistant
+# Fantasy Lineup Assistant
 
-Every week during the NFL season, fantasy football managers have to decide who to start
-and who to bench. Doing it properly means checking injury reports, practice updates,
-who your player is up against, betting lines, and how he's been playing lately — across
-half a dozen websites, for a dozen players.
+**A weekly start/sit assistant for ESPN fantasy football.** It reads your real team,
+gathers the week's stats, injuries, matchups and news, picks the best legal lineup, and
+emails you the answer on Sunday morning, with a reason for every call. Every reason is
+fact-checked by a second AI before it reaches you.
 
-This does that for you and emails you the answer, with a reason for every call.
+```
+Week 3 (Wed Sep 23): 2 changes to consider
 
-**But first it answers a question nobody selling these tools seems to ask: how much can a
-tool like this actually help?**
+  ▲ Start Parker Washington    ▼ Sit DK Metcalf          +6.5 projected
+  ▲ Start Zay Flowers          ▼ Sit Jameson Williams    +7.9 projected
 
----
-
-## The honest answer
-
-We checked twelve years of real fantasy leagues — 144 team-seasons — to find the ceiling.
-
-**About 3 points a week, out of roughly 96.**
-
-That's the gap between a simple rule anyone could follow and a cheater who knows the
-future perfectly. Everything a tool could possibly do lives inside that 3 points.
-
-Here's how a typical week breaks down:
-
-| | Share of the decision |
-|---|---|
-| A simple rule already gets this right | 41% |
-| Could be won with better information | **18%** |
-| Pure luck — nobody can predict it | 40% |
-
-![How much room is there for a smarter start/sit assistant?](docs/step1_headroom.png)
-
-Two things worth knowing that came out of the same check:
-
-**Chasing last week's performance is worse than ignoring the season entirely.** Starting
-whoever did well last week was the *worst* of the six approaches tested — worse than just
-using preseason rankings and never updating them.
-
-**You can't tell whether a tool like this works by using it.** The week-to-week swing is
-so large you'd need about 53 seasons to separate a real improvement from noise. Playing one
-season gives you one.
+  Zay Flowers — START   [Questionable]
+    The coach mentioned he has a good shot to play, though he missed practice
+    time mid-week.
+    I would monitor his status closely given the hamstring concern reported by ESPN.
+    Last games: 26
+    vs DAL (away) · favored by 3.5 · total 52.5
+    DAL allow the 17th-most points to WRs (30.1 a game)
+```
 
 ---
 
-## So what's the point?
-
-The value isn't better picks. It's that you don't spend twenty minutes on Sunday morning
-with eight tabs open, and that every recommendation tells you where it came from.
-
-**What it won't claim:** that it picks better than a simple rule. It doesn't. Neither does
-anything else in this category — there just isn't room. Any app implying otherwise is
-selling you something.
-
-**What it does promise, and what we can actually prove:** it doesn't make things up.
-
-That second one matters more than it sounds. The real danger with an AI assistant isn't
-bad advice — it's advice that sounds authoritative and is quietly wrong. So a second AI
-reviews every sentence the first one wrote and checks it against the actual data. Anything
-it can't back up gets rewritten.
-
-Unlike "are the picks good," this is something we can measure — the facts are right there
-to compare against, and there are hundreds of sentences to check every week instead of one
-season per year.
-
-*That measurement hasn't been run yet. The number goes here when it exists, and not before.*
-
----
-
-## What happens each week
-
-1. A scheduled job wakes up and pulls each manager's roster from ESPN.
-2. For every player it checks: bye week, injury status, recent games, opponent, betting line.
-3. If someone's listed as questionable, it goes hunting for news — practice reports, what
-   the coach said, whether the guy ahead of him is hurt.
-4. It works out the best legal lineup from all of that.
-5. It compares that to what you already have set.
-6. An AI writes the reasons. A second AI fact-checks them.
-7. You get an email — but only if something actually changed since last time.
-
-**"Nothing to change" is a real answer here.** If your lineup is already what it would
-recommend, it says so. If the difference is half a point, it tells you it isn't worth
-bothering. And if nothing's changed since the last email, you don't get one.
-
-Most weeks that's the honest answer. Other apps invent a reason to change something because
-they need you opening the app. This one doesn't need anything from you.
-
----
-
-## A couple of things that went wrong along the way
-
-**81 players had their stats swapped with someone else's.** Frank Gore and his son Frank
-Gore Jr. both play in the NFL. The first version of the name-matching code treated them as
-the same person, so a Hall of Fame running back's season got credited to his son. It
-happened 81 times across different players — and it never crashed, it just quietly gave
-wrong answers.
-
-**One analysis looked great and was completely useless.** A simple approach appeared to beat
-real draft-market consensus. Checking what it would actually do revealed it would have
-drafted nine quarterbacks with the first fifteen picks. You can only start one.
-
-Both are the dangerous kind of bug: no error message, just plausible nonsense.
-
----
-
-## Where things stand
+## What it does
 
 | | |
 |---|---|
-| Measuring the ceiling | done |
-| Data pipeline and quality checks | done |
-| Lineup math | done |
-| The AI fact-checker | next |
-| News searching | not started |
-| Pulling rosters from ESPN | not started |
-| Sending email | not started |
+| 🏈 **Reads your real team** | Private ESPN leagues. Your league's own lineup slots, your current lineup, kickers and defenses included. |
+| 📊 **Gathers the week** | Recent games, injury and practice reports, opponent, betting spread and total, how many points the opponent gives up to that position. |
+| 📰 **Reads the news** | ESPN's latest notes for every player. When "will he play?" is still open, an AI agent digs further: team news, practice reports, the depth chart. |
+| 🧮 **Picks the lineup** | With math, not AI: the best legal lineup for your league's slots. Players already locked (Thursday games) and players on IR are left alone. |
+| ✍️ **Explains every call** | Short notes in plain English, one card per player. |
+| ✅ **Fact-checks itself** | A second AI checks every sentence against the data. Anything it can't back up is rewritten or removed. |
+| 📬 **Emails you Sunday morning** | A readable email that runs itself on a schedule. No server, no app to open. |
 
-The measurement is finished and the design is settled. The assistant itself is still being
-built.
+**It tells you when a change isn't worth it.** Swaps worth less than a point are labelled
+*toss-up, your call*, and if your lineup is already right it says *nothing I'd change*.
 
 ---
 
-## More detail
+## How it works
 
-- **[docs/DESIGN.md](docs/DESIGN.md)** — how it's built, the technical decisions and why,
-  the stack, how to run it
-- **[docs/FINDINGS.md](docs/FINDINGS.md)** — every number above, with the script that
-  produced it
-- **[archive/](archive/)** — four earlier versions of this project and why each was dropped
+```mermaid
+flowchart LR
+    ESPN["ESPN<br/>your team"] --> FACTS["Facts<br/>stats, injuries,<br/>matchups"]
+    FACTS --> NEWS["News<br/>ESPN notes +<br/>digging agent"]
+    NEWS --> PICK["Lineup<br/>math, not AI"]
+    PICK --> WRITE["Writer AI<br/>explains each call"]
+    WRITE --> CHECK{"Checker AI<br/>is every sentence<br/>backed by the facts?"}
+    CHECK -->|"no: rewrite, or cut"| WRITE
+    CHECK -->|yes| MAIL["Email"]
+```
 
-## License
+Two parts of this are genuinely *agentic*, meaning an AI decides the next step in a loop:
 
-None specified yet.
+- **The news agent** (LangGraph) runs only when a player's status is uncertain. It picks
+  from four tools, searches until it can answer *"will he play, and in what role?"*, and
+  stops after four tries. It hands back the original news items it found, never its own
+  summary, so nothing it writes can be mistaken for evidence.
+- **The write → check → rewrite loop** (LangGraph) keeps going until every sentence is
+  backed by the facts, or the sentence is cut after two failed rewrites.
+
+Everything else is plain code, on purpose. The same data is needed every week, and the
+lineup math is already optimal, so an AI there would only add ways to fail.
+
+---
+
+## Why you can trust what it says
+
+- **The AI never picks your lineup.** It can disagree in a note (and sometimes does), but
+  it can't change the answer.
+- **Every sentence is checked before it's sent.** In testing, the checker caught **87%** of
+  deliberately wrong or made-up sentences, with no false alarms. A sentence that fails and
+  can't be fixed is deleted, not sent.
+- **Sources are named, not invented.** News comes from ESPN and nflverse only, matched to
+  players by ID rather than by name.
+- **If the AI is down, you still get your lineup.** Quota used up, servers busy, a garbled
+  reply: the email still goes out with the lineup and the figures, and says why the notes
+  are missing.
+
+### How much can any start/sit tool help?
+
+Less than most apps suggest, and this one says so. Across 12 past seasons, a simple
+rule (recent form, adjusted toward preseason expectations) already set lineups about as
+well as anything could. Knowing every player's true ability *and* every matchup would add
+only about **3 points a week**. So the value here isn't magic picks. It's the twenty
+minutes of tab-switching you skip, and seeing exactly why each call was made. The numbers
+are in [docs/FINDINGS.md](docs/FINDINGS.md).
+
+---
+
+## Setup
+
+You'll need Python 3.12+, [uv](https://docs.astral.sh/uv/), and four free accounts.
+
+**1. Install**
+
+```bash
+git clone https://github.com/VKKan2002/fantasy_draft_eval_project.git
+cd fantasy_draft_eval_project
+uv sync
+```
+
+**2. Add your keys.** Copy `.env.example` to `.env` and fill it in. `.env` is gitignored.
+
+| Key | Where it comes from |
+|---|---|
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/): the writer |
+| `GROQ_API_KEY` | [Groq console](https://console.groq.com/): the fact-checker and the news agent |
+| `ESPN_S2`, `ESPN_SWID` | Your browser's cookies on espn.com, while logged in (DevTools → Application → Cookies) |
+| `ESPN_LEAGUE_ID`, `ESPN_TEAM_ID` | Your team page's address: `...?leagueId=…&teamId=…` |
+| `RESEND_API_KEY`, `EMAIL_TO` | [Resend](https://resend.com/): sends the email |
+
+**3. Run it**
+
+```bash
+uv run python -m ffeval            # print this week's report
+uv run python -m ffeval --email    # send it to EMAIL_TO instead
+```
+
+A full run takes about three minutes.
+
+**4. Make it weekly (optional).** Add the same keys as repository secrets
+(*Settings → Secrets and variables → Actions*). The included workflow runs every Sunday at
+9am Eastern and can also be started by hand from the *Actions* tab. It sends the report
+without printing it, so your roster never shows up in the logs.
+
+---
+
+## Built with
+
+**Python** · **LangGraph** (both agent loops) · **Groq** `gpt-oss-120b` (fact-checker, news
+agent) · **Gemini** `flash-lite` (writer) · **nflverse** (stats, injuries, schedules, depth
+charts) · **ESPN** (rosters, news, projections) · **Resend** (email) · **GitHub Actions**
+(schedule)
+
+Also included: an [MCP server](mcp_server/) that lets an AI app like Claude Desktop look up
+player form directly.
+
+## Good to know
+
+- **ESPN only**, for now. The ESPN cookies last about a year; when they expire, the run
+  stops at the ESPN step with a clear error.
+- **Email goes to you only** until you verify a domain with Resend. That's Resend's rule
+  for free accounts, and a sensible first stage anyway.
+- **Early-season projections lean on ESPN's preseason projection**, then shift toward
+  what each player has actually done as games pile up.
+- **Free AI tiers have limits.** A run uses a handful of requests, well inside them.
+
+## Project layout
+
+```
+src/ffeval/
+  __main__.py      the weekly command: connects every step, in order
+  ingest/          ESPN roster, nflverse facts, news + the digging agent
+  graph.py         the write → check → rewrite loop
+  writer.py        the writer AI
+  audit/           the fact-checker and how it was measured
+  report.py        the report text     mail.py   the email
+tests/             73 tests, no network needed
+docs/              DESIGN.md (every decision and why), FINDINGS.md (the numbers)
+```
+
+**Want the reasoning behind a choice?** [docs/DESIGN.md](docs/DESIGN.md) records every
+design decision with the real failure that led to it.
