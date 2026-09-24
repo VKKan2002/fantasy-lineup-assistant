@@ -112,3 +112,15 @@ def test_questionable_does_not_block_a_start():
         news=(), player_id="q")
     starters, _ = decide_starters([q], {"q": 20.0}, {})
     assert "q" in starters
+
+
+def test_locked_players_stay_where_they_are():
+    """Thursday's game is over by Sunday. A locked starter stays in however badly he is
+    projected, and a locked bench player cannot come in however well."""
+    proj = {p.player_id: 10.0 for p in ROSTER} | {"rb2": 1.0}
+    roster = ROSTER + [_pkt("wr9", "WR")]
+    proj["wr9"] = 99.0
+    starters, projections = decide_starters(roster, proj, {},
+                                            must_start={"rb2"}, cannot_start={"wr9"})
+    assert "rb2" in starters and "wr9" not in starters
+    assert projections["rb2"] == 1.0                 # the real number, not the lock trick

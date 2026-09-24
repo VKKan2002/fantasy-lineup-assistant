@@ -1,0 +1,33 @@
+# Sunday-morning report, emailed. Also runnable by hand from the Actions tab.
+#
+# The report is your roster, and this log can be read by anyone who can see the repo, so
+# the job sends it and prints only Resend's message id (`--email`). Every key comes from
+# repository secrets - Settings > Secrets and variables > Actions - never from the code.
+
+name: weekly report
+
+on:
+  schedule:
+    # 13:00 UTC = 9am Eastern while daylight time lasts (to early November), then 8am.
+    # ponytail: one fixed UTC time; both are after Friday's injury report and before 1pm.
+    - cron: "0 13 * * 0"
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - run: uv run python -m ffeval --email
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_LEAGUE_ID: ${{ secrets.ESPN_LEAGUE_ID }}
+          ESPN_TEAM_ID: ${{ secrets.ESPN_TEAM_ID }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}

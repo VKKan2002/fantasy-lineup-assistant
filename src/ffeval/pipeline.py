@@ -61,6 +61,8 @@ def decide_starters(
     priors: dict[str, float],
     history: dict[str, list[float]],
     league: League | None = None,
+    must_start: set[str] = frozenset(),
+    cannot_start: set[str] = frozenset(),
 ) -> tuple[set[str], dict[str, float | None]]:
     """Who to start this week, and what each player was projected at.
 
@@ -75,6 +77,11 @@ def decide_starters(
 
     A player on a bye is excluded too. best_lineup() would happily start him otherwise,
     since it only sees a number.
+
+    must_start / cannot_start are player names whose game has kicked off: ESPN has locked
+    them where they are. A locked starter is in the lineup whatever his projection, and a
+    locked bench player cannot be moved in. Recommending either change is advice nobody
+    can take.
     """
     league = league or League()
     projections: dict[str, float | None] = {}
@@ -82,7 +89,11 @@ def decide_starters(
     for p in packets:
         proj = project_ppg(history.get(p.player_id, []), priors.get(p.player_id))
         projections[p.player] = proj
-        if proj is not None and _can_play(p):
+        if p.player in must_start:
+            # ponytail: a huge score makes best_lineup take him first at his position. The
+            # real projection is still what `projections` reports.
+            available.append((p.player, p.position, 1e9))
+        elif proj is not None and _can_play(p) and p.player not in cannot_start:
             available.append((p.player, p.position, proj))
 
     _, chosen = best_lineup(available, league)

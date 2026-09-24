@@ -447,6 +447,20 @@ ESPN revises that projection in-season is unverified, which would bring back the
 double count. The 91.2% was measured with the ADP prior, so it does not describe this one.
 A fix for next year is to save the ADP window in August, before it is gone.
 
+**A locked player is left where he is.** By Sunday morning Thursday's game is over and
+ESPN has locked those players. A recommendation to start or bench one is advice nobody can
+take, so a locked starter stays in the lineup whatever his projection and a locked bench
+player cannot come in. Kickoff is in the schedule allowlist - it is known in advance.
+
+**The email is standard-library HTML, sent to the owner only for now.** Inline styles and
+a table layout, because email clients drop stylesheets; a plain-text copy that is the
+terminal report itself; one HTTPS POST to Resend. Resend's testing sender only delivers to
+the account's own address, which is exactly the "only me until it works" stage. Everything
+from outside (names, news, model prose) is escaped. The scheduled job prints only the
+message id: its log is visible to anyone who can see the repo, and the report is a roster.
+"Only send if something changed" waits for the other managers - one email a week to one
+person cannot be a repeat.
+
 **"I couldn't find anything" is a valid, visible answer,** and there is always a plain
 statistical fallback, so the tool still works when the clever parts are down.
 
@@ -651,7 +665,7 @@ Actions secrets, never in the repo.
 | Packet builder ([ingest/packets.py](../src/ffeval/ingest/packets.py)) | **done — rebuilds the hand-typed packet fact for fact** |
 | Labelled eval set (1 packet, 30 claims) | done — labels are AI-written, see below |
 | LLM auditor (prompt, model call, parsing) | **done — 93% recall vs 33% baseline** |
-| Test suite | **69 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
+| Test suite | **72 tests** — deterministic layer, the gate, prompt/parse plumbing, the writer, the loop's routing ([tests/](../tests/)) |
 | Numeric-source gate (layer 2) | **done — refuses 4 of 30 eval claims, no false refusals** |
 | Templated numeric prose | **done — see writer.py** |
 | Writer ([writer.py](../src/ffeval/writer.py)) | **done — templated numbers, model prose, 5 tests** |
@@ -661,7 +675,7 @@ Actions secrets, never in the repo.
 | News fetch + digging agent ([ingest/news.py](../src/ffeval/ingest/news.py)) | **done — live on 2026 week 3; see the rule below** |
 | ESPN roster fetch ([ingest/roster.py](../src/ffeval/ingest/roster.py)) | **done — private league, one request; slots from league settings; K and D/ST included** |
 | Weekly command (`uv run python -m ffeval`) | **done — real team, week 3, 3 minutes end to end** |
-| Email, change-gating, cron | not started |
+| Email + Sunday schedule ([mail.py](../src/ffeval/mail.py), [weekly.yml](../.github/workflows/weekly.yml)) | **done — to the owner only; change-gating deferred until other managers join** |
 
 ### What the deterministic baseline measured
 

@@ -31,6 +31,7 @@ from ..audit.packet import Fact, FactsPacket, NewsItem
 _SCHEDULE_COLS = (
     "game_id", "season", "week", "home_team", "away_team",
     "spread_line", "total_line", "roof",
+    "gameday", "gametime",      # kickoff, US Eastern. Known in advance; used to lock players
 )
 
 _STATS_SRC = "nflverse player_stats (weekly, REG)"

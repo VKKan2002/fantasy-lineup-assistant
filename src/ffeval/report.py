@@ -8,10 +8,52 @@ is mostly noise, and saying so is the honest version of recommending it.
 
 from __future__ import annotations
 
+from .audit.packet import FactsPacket
 from .scoring.league import FLEX_ELIGIBLE
 from .writer import PlayerSection
 
 TOSS_UP = 1.0   # points; see the module docstring
+
+
+def _nth(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def summary(p: FactsPacket) -> list[str]:
+    """The facts a person reads, in a few short lines. The packet's labels were written
+    for the model - "official injury report status: Out, Doubtful, Questionable, or none
+    if not listed: none" - and a manager does not need twelve of them. The model still
+    gets every fact; this only decides what the email shows. Injury and bye lines appear
+    only when they say something.
+    """
+    f = {x.id: x.value for x in p.facts}
+    out = []
+    games = [round(v, 1) for k, v in sorted(f.items()) if k.startswith("form.game_w")]
+    if games:
+        out.append("Last games: " + ", ".join(f"{g:g}" for g in games))
+    elif "espn.points_per_game_this_season" in f:
+        last = f.get("espn.points_per_game_last_season")
+        out.append(f"Per game: {f['espn.points_per_game_this_season']:g} this season"
+                   + ("" if last is None else f", {last:g} last season"))
+    if f.get("bye.is_bye_week"):
+        return out + ["On a bye this week"]
+    if "matchup.spread_line" in f:
+        spread = f["matchup.spread_line"]
+        odds = ("even" if spread == 0 else
+                f"favored by {spread:g}" if spread > 0 else f"underdog by {-spread:g}")
+        where = "home" if f.get("matchup.is_home") else "away"
+        out.append(f"vs {p.opponent} ({where}) · {odds} · total {f['matchup.total_line']:g}")
+    pos = p.position.lower()
+    rank = f.get(f"defense.{pos}_ppr_allowed_rank")
+    if rank is not None:
+        per = f.get(f"defense.{pos}_ppr_allowed_per_game")
+        out.append(f"{p.opponent} allow the {_nth(int(rank))}-most points to {p.position}s"
+                   + ("" if per is None else f" ({per:.1f} a game)"))
+    status = str(f.get("injury.report_status", "none"))
+    practice = str(f.get("injury.practice_status", "none"))
+    if status != "none" or practice != "none":
+        out.append(f"Injury report: {status}" + ("" if practice == "none" else f" · {practice}"))
+    return out
 
 
 def swaps(current: set[str], recommended: set[str], position: dict[str, str],
@@ -41,7 +83,8 @@ def swaps(current: set[str], recommended: set[str], position: dict[str, str],
 
 
 def render(week: int, pairs, starters: set[str], projections: dict[str, float | None],
-           sections: list[PlayerSection], notes: list[str], fallback: str = "") -> str:
+           sections: list[PlayerSection], notes: list[str], fallback: str = "",
+           packets: dict[str, FactsPacket] | None = None) -> str:
     lines = [f"WEEK {week}", ""]
     if fallback:
         lines += [f"Notes are off this week: {fallback}", ""]
@@ -58,7 +101,8 @@ def render(week: int, pairs, starters: set[str], projections: dict[str, float | 
             lines.append(f"  {s.player:<24} {'' if p is None else f'{p:5.1f}'}")
     for s in sections:
         lines += ["", f"{s.player} - {s.decision.upper()}"]
-        lines += [f"  {t}" for t in s.templated]
+        facts = summary(packets[s.player]) if packets and s.player in packets else s.templated
+        lines += [f"  {t}" for t in facts]
         lines += [f"  > {t}" for t in s.prose]
     if notes:
         lines += ["", *notes]
