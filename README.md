@@ -97,8 +97,8 @@ You'll need Python 3.12+, [uv](https://docs.astral.sh/uv/), and four free accoun
 **1. Install**
 
 ```bash
-git clone https://github.com/VKKan2002/fantasy_draft_eval_project.git
-cd fantasy_draft_eval_project
+git clone https://github.com/VKKan2002/fantasy-lineup-assistant.git
+cd fantasy-lineup-assistant
 uv sync
 ```
 
