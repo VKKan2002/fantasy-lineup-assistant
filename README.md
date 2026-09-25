@@ -108,7 +108,7 @@ uv sync
 |---|---|
 | `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/): the writer |
 | `GROQ_API_KEY` | [Groq console](https://console.groq.com/): the fact-checker and the news agent |
-| `ESPN_S2`, `ESPN_SWID` | Your browser's cookies on espn.com, while logged in (DevTools → Application → Cookies) |
+| `ESPN_S2`, `ESPN_SWID` | Private leagues only. Your browser's cookies on espn.com, while logged in (DevTools → Application → Cookies). A league set to public needs neither, and nothing expires |
 | `ESPN_LEAGUE_ID`, `ESPN_TEAM_ID` | Your team page's address: `...?leagueId=…&teamId=…` |
 | `RESEND_API_KEY`, `EMAIL_TO` | [Resend](https://resend.com/): sends the email |
 

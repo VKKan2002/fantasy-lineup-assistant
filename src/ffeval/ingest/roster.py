@@ -1,6 +1,6 @@
 """Your real team and your league's rules, from ESPN. One request.
 
-The league is private, so the request carries two cookies from a logged-in browser
+A private league needs two cookies from a logged-in browser
 (ESPN_S2, ESPN_SWID in the gitignored .env). They are a password to the ESPN account:
 they never go in a prompt, a log line, or a commit.
 
@@ -49,13 +49,14 @@ class RosterPlayer:
 
 
 def fetch_league(season: int) -> dict:
-    """The whole league as ESPN sends it. Needs ESPN_S2, ESPN_SWID, ESPN_LEAGUE_ID."""
+    """The whole league as ESPN sends it. Needs ESPN_LEAGUE_ID; ESPN_S2 and ESPN_SWID only
+    for a private league (a public one answers anyone, and never expires on you)."""
     from dotenv import load_dotenv
 
     load_dotenv()
+    s2, swid = os.environ.get("ESPN_S2"), os.environ.get("ESPN_SWID")
     return _get(LEAGUE_URL.format(season=season, league=os.environ["ESPN_LEAGUE_ID"]),
-                headers={"Cookie": f"espn_s2={os.environ['ESPN_S2']}; "
-                                   f"SWID={os.environ['ESPN_SWID']}"})
+                headers={"Cookie": f"espn_s2={s2}; SWID={swid}"} if s2 and swid else {})
 
 
 def my_roster(league: dict, team_id: int | None = None) -> list[RosterPlayer]:
